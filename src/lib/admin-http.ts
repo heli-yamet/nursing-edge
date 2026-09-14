@@ -18,9 +18,13 @@ export function emptyAdminCors(req: Request): Response {
 
 function applyAdminCors(req: Request, response: Response): void {
   const origin = req.headers.get("origin") ?? "";
+  console.log("origin", origin);
+  console.log("ADMIN_ORIGIN", process.env.ADMIN_ORIGIN);
   const allowed = (process.env.ADMIN_ORIGIN ?? DEFAULT_ADMIN_ORIGIN)
     .split(",")
     .map((value) => value.trim());
+
+  console.log("allowed", allowed);
 
   if (origin && allowed.includes(origin)) {
     response.headers.set("Access-Control-Allow-Origin", origin);
