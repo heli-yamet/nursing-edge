@@ -4,7 +4,7 @@ const uri = process.env.MONGODB_URI;
 
 type GlobalMongo = typeof globalThis & {
   _mongoClientPromise?: Promise<MongoClient>;
-  _adminIndexes?: Promise<void>;
+  _schemaIndexes?: Promise<void>;
 };
 
 function getClientPromise(): Promise<MongoClient> {
@@ -29,10 +29,10 @@ export async function getDb(): Promise<Db> {
   const client = await getClientPromise();
   const db = client.db();
   const globalMongo = globalThis as GlobalMongo;
-  if (!globalMongo._adminIndexes) {
-    globalMongo._adminIndexes = ensureIndexes(db);
+  if (!globalMongo._schemaIndexes) {
+    globalMongo._schemaIndexes = ensureIndexes(db);
   }
-  await globalMongo._adminIndexes;
+  await globalMongo._schemaIndexes;
   return db;
 }
 
@@ -46,4 +46,53 @@ async function ensureIndexes(db: Db): Promise<void> {
   await db
     .collection("admin_users_codes")
     .createIndex({ email: 1 }, { unique: true });
+
+  await db.collection("learners").createIndex({ learner_id: 1 }, { unique: true });
+  await db.collection("learners").createIndex({ email: 1 }, { unique: true });
+
+  await db
+    .collection("entitlements")
+    .createIndex({ entitlement_id: 1 }, { unique: true });
+  await db.collection("entitlements").createIndex({ learner_id: 1 });
+
+  await db
+    .collection("questions")
+    .createIndex({ question_id: 1 }, { unique: true });
+
+  await db
+    .collection("question_versions")
+    .createIndex({ question_version_id: 1 }, { unique: true });
+  await db.collection("question_versions").createIndex({ question_id: 1 });
+
+  await db.collection("sessions").createIndex({ session_id: 1 }, { unique: true });
+  await db.collection("sessions").createIndex({ learner_id: 1, state: 1 });
+  await db.collection("sessions").createIndex(
+    { learner_id: 1 },
+    { unique: true, partialFilterExpression: { state: "ACTIVE" } },
+  );
+
+  await db.collection("attempts").createIndex({ attempt_id: 1 }, { unique: true });
+  await db.collection("attempts").createIndex({ session_id: 1, sequence: 1 });
+  await db.collection("attempts").createIndex({ learner_id: 1 });
+
+  await db
+    .collection("exposures")
+    .createIndex({ exposure_id: 1 }, { unique: true });
+  await db
+    .collection("exposures")
+    .createIndex({ learner_id: 1, question_version_id: 1, session_id: 1 });
+
+  await db
+    .collection("review_cycles")
+    .createIndex({ cycle_id: 1 }, { unique: true });
+  await db.collection("review_cycles").createIndex(
+    { learner_id: 1, question_id: 1 },
+    { unique: true, partialFilterExpression: { state: "ACTIVE" } },
+  );
+  await db.collection("review_cycles").createIndex({ learner_id: 1, due_at: 1 });
+
+  await db
+    .collection("review_transitions")
+    .createIndex({ transition_id: 1 }, { unique: true });
+  await db.collection("review_transitions").createIndex({ cycle_id: 1 });
 }
