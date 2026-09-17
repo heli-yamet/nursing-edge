@@ -16,6 +16,7 @@ export type EntitlementStatus = "ACTIVE" | "REVOKED" | "EXPIRED";
 export type QuestionStatus = "ACTIVE" | "PAUSED" | "RETIRED";
 export type QuestionFormat = "MCQ" | "SATA";
 export type PublicationStatus = "STAGED" | "PUBLISHED";
+export type SourceTrack = "CCRN" | "NCLEX";
 
 export type SessionType = "PRACTICE" | "REVIEW" | "CALIBRATION";
 export type SessionState = "ACTIVE" | "COMPLETED" | "ENDED";
@@ -30,7 +31,33 @@ export type ReviewCycleState =
 
 export type AnswerOption = {
   option_id: string;
-  text: string;
+  displayed_option: string;
+  option_text: string;
+  is_correct: boolean;
+  authored_role: string;
+  patient_specific_option_analysis: string;
+};
+
+export type QuestionRationales = {
+  clinical_key_justification: string;
+  learner_core_rationale: string;
+  focused_clinical_contrast: string;
+  transfer_rule: string;
+  next_reassessment_application: string;
+  clinical_source_anchors: string;
+};
+
+export type ReviewTeaching = {
+  reasoning_target: string;
+  primary_interview_prompt: string;
+  expected_reasoning_commitment: string;
+  concise_teaching_response: string;
+  optional_second_prompt: string;
+  the_trap: string;
+  why_it_wins: string;
+  carry_it_forward: string;
+  reasoning_diagnostic_tag: string;
+  reasoning_map_question_version_record: string;
 };
 
 export type AssignedVersion = {
@@ -65,6 +92,12 @@ export type Question = {
   question_id: string;
   topic_id: string;
   status: QuestionStatus;
+  source_system: string;
+  source_topic: string;
+  track: SourceTrack;
+  selected_number: number;
+  original_source_q: string;
+  workbook_row: string;
 };
 
 export type QuestionVersion = {
@@ -74,6 +107,11 @@ export type QuestionVersion = {
   stem: string;
   options: AnswerOption[];
   correct_option_ids: string[];
+  displayed_correct_answer: string;
+  commit_prompt: string;
+  source_rating: string;
+  rationales: QuestionRationales;
+  review_teaching: ReviewTeaching;
   learner_core_rationale: string;
   content_fingerprint: string;
   publication_status: PublicationStatus;
