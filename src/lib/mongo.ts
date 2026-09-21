@@ -95,4 +95,13 @@ async function ensureIndexes(db: Db): Promise<void> {
     .collection("review_transitions")
     .createIndex({ transition_id: 1 }, { unique: true });
   await db.collection("review_transitions").createIndex({ cycle_id: 1 });
+
+  await db
+    .collection("import_batches")
+    .createIndex({ batch_id: 1 }, { unique: true });
+  await db.collection("import_batches").createIndex({ created_at: 1 });
+
+  await db.collection("import_lines").createIndex({ line_id: 1 }, { unique: true });
+  await db.collection("import_lines").createIndex({ batch_id: 1 });
+  await db.collection("import_lines").createIndex({ question_version_id: 1 });
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { validateImportQuestion } from "@/lib/content-validate";
 import { selected1 } from "@/lib/fixtures/selected-1";
 import { mapSourceSystem } from "@/lib/learner-topics";
+import { isLearnerEligible } from "@/lib/stage-import";
 
 describe("Phase 2 content validator", () => {
   it("accepts Selected 1 and maps CARDIO_PERFUSION to the learner topic", () => {
@@ -23,6 +24,7 @@ describe("Phase 2 content validator", () => {
     expect(result.version.publication_status).toBe("STAGED");
     expect(result.version.valid).toBe(true);
     expect(result.version.complete).toBe(true);
+    expect(isLearnerEligible(result.version)).toBe(false);
   });
 
   it("rejects an unmapped source system instead of guessing", () => {

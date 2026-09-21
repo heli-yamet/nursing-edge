@@ -3,6 +3,8 @@ import type {
   Attempt,
   Entitlement,
   Exposure,
+  ImportBatch,
+  ImportLine,
   Learner,
   Question,
   QuestionVersion,
@@ -25,6 +27,14 @@ export async function questions() {
 
 export async function questionVersions() {
   return (await getDb()).collection<QuestionVersion>("question_versions");
+}
+
+export async function importBatches() {
+  return (await getDb()).collection<ImportBatch>("import_batches");
+}
+
+export async function importLines() {
+  return (await getDb()).collection<ImportLine>("import_lines");
 }
 
 export async function sessions() {

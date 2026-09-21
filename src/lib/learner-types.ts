@@ -17,6 +17,7 @@ export type QuestionStatus = "ACTIVE" | "PAUSED" | "RETIRED";
 export type QuestionFormat = "MCQ" | "SATA";
 export type PublicationStatus = "STAGED" | "PUBLISHED";
 export type SourceTrack = "CCRN" | "NCLEX";
+export type ImportLineOutcome = "PASSED" | "FAILED" | "UNCHANGED";
 
 export type SessionType = "PRACTICE" | "REVIEW" | "CALIBRATION";
 export type SessionState = "ACTIVE" | "COMPLETED" | "ENDED";
@@ -176,4 +177,24 @@ export type ReviewTransition = {
   to_stage: ReviewStage | null;
   occurred_at: Date;
   reason: string;
+};
+
+export type ImportBatch = {
+  batch_id: string;
+  created_at: Date;
+  source: string;
+  line_count: number;
+  passed_count: number;
+  failed_count: number;
+  unchanged_count: number;
+};
+
+export type ImportLine = {
+  line_id: string;
+  batch_id: string;
+  question_id: string;
+  question_version_id: string;
+  workbook_row: string;
+  outcome: ImportLineOutcome;
+  errors: string[];
 };
