@@ -13,16 +13,11 @@ function getClientPromise(): Promise<MongoClient> {
   }
 
   const globalMongo = globalThis as GlobalMongo;
-
-  if (process.env.NODE_ENV === "development") {
-    if (!globalMongo._mongoClientPromise) {
-      const client = new MongoClient(uri);
-      globalMongo._mongoClientPromise = client.connect();
-    }
-    return globalMongo._mongoClientPromise;
+  if (!globalMongo._mongoClientPromise) {
+    const client = new MongoClient(uri);
+    globalMongo._mongoClientPromise = client.connect();
   }
-
-  return new MongoClient(uri).connect();
+  return globalMongo._mongoClientPromise;
 }
 
 export async function getDb(): Promise<Db> {
@@ -74,6 +69,7 @@ async function ensureIndexes(db: Db): Promise<void> {
   await db.collection("attempts").createIndex({ attempt_id: 1 }, { unique: true });
   await db.collection("attempts").createIndex({ session_id: 1, sequence: 1 });
   await db.collection("attempts").createIndex({ learner_id: 1 });
+  await db.collection("attempts").createIndex({ question_version_id: 1 });
 
   await db
     .collection("exposures")

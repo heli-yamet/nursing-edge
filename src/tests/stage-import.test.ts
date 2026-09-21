@@ -174,6 +174,17 @@ describe("Phase 3 staged import", () => {
     expect(store.questions.size).toBe(0);
   });
 
+  it("applies later rows in the same batch against earlier writes", async () => {
+    const store = createMemoryContentStore();
+    const result = await stageImport(store, {
+      records: [selected1, selected1],
+    });
+
+    expect(result.batch.passed_count).toBe(1);
+    expect(result.batch.unchanged_count).toBe(1);
+    expect(store.versions.size).toBe(1);
+  });
+
   it("keeps prior batches when a second import runs", async () => {
     const store = createMemoryContentStore();
     const first = await stageImport(store, { records: [selected1] });

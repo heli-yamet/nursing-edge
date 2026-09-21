@@ -82,34 +82,60 @@ export async function stageImport(
   const batch_id = newPermanentId();
   const created_at = clock.now();
   const source = input.source ?? "records";
+  const prepared = input.records.map((record) => ({
+    record,
+    line_id: newPermanentId(),
+    validated: validateImportQuestion(record),
+  }));
+
+  const versionIds = [
+    ...new Set(
+      prepared.flatMap((item) =>
+        item.validated.ok ? [item.validated.version.question_version_id] : [],
+      ),
+    ),
+  ];
+  const questionIds = [
+    ...new Set(
+      prepared.flatMap((item) =>
+        item.validated.ok ? [item.validated.question.question_id] : [],
+      ),
+    ),
+  ];
+
+  const [existingVersions, existingQuestions] = await Promise.all([
+    store.getVersions(versionIds),
+    store.getQuestions(questionIds),
+  ]);
+  const attempted = await store.versionsWithAttempts([
+    ...existingVersions.keys(),
+  ]);
+
+  const questionsToWrite = new Map<string, Question>();
+  const versionsToWrite = new Map<string, QuestionVersion>();
   const lines: ImportLine[] = [];
 
-  for (const record of input.records) {
-    const validated = validateImportQuestion(record);
-    const line_id = newPermanentId();
-
-    if (!validated.ok) {
-      const line: ImportLine = {
-        line_id,
+  for (const item of prepared) {
+    if (!item.validated.ok) {
+      lines.push({
+        line_id: item.line_id,
         batch_id,
-        question_id: record.permanent_item_id.trim(),
-        question_version_id: record.question_version.trim(),
-        workbook_row: String(record.workbook_row),
+        question_id: item.record.permanent_item_id.trim(),
+        question_version_id: item.record.question_version.trim(),
+        workbook_row: String(item.record.workbook_row),
         outcome: "FAILED",
-        errors: validated.errors,
-      };
-      await store.insertLine(line);
-      lines.push(line);
+        errors: item.validated.errors,
+      });
       continue;
     }
 
-    const existing = await store.getVersion(
-      validated.version.question_version_id,
-    );
+    const incomingVersion = item.validated.version;
+    const incomingQuestion = item.validated.question;
+    const existing = existingVersions.get(incomingVersion.question_version_id) ?? null;
     const hasAttempt = existing
-      ? await store.versionHasAttempts(existing.question_version_id)
+      ? attempted.has(existing.question_version_id)
       : false;
-    const plan = planVersionWrite(validated.version, existing, hasAttempt);
+    const plan = planVersionWrite(incomingVersion, existing, hasAttempt);
 
     let outcome: ImportLineOutcome = "PASSED";
     let errors: string[] = [];
@@ -121,27 +147,28 @@ export async function stageImport(
       outcome = "UNCHANGED";
     } else {
       const question = mergeQuestion(
-        await store.getQuestion(validated.question.question_id),
-        validated.question,
+        existingQuestions.get(incomingQuestion.question_id) ?? null,
+        incomingQuestion,
       );
-      await store.upsertQuestion(question);
-      await store.upsertVersion({
-        ...validated.version,
-        publication_status: "STAGED",
-      });
+      const staged = {
+        ...incomingVersion,
+        publication_status: "STAGED" as const,
+      };
+      existingQuestions.set(question.question_id, question);
+      existingVersions.set(staged.question_version_id, staged);
+      questionsToWrite.set(question.question_id, question);
+      versionsToWrite.set(staged.question_version_id, staged);
     }
 
-    const line: ImportLine = {
-      line_id,
+    lines.push({
+      line_id: item.line_id,
       batch_id,
-      question_id: validated.question.question_id,
-      question_version_id: validated.version.question_version_id,
-      workbook_row: validated.question.workbook_row,
+      question_id: incomingQuestion.question_id,
+      question_version_id: incomingVersion.question_version_id,
+      workbook_row: incomingQuestion.workbook_row,
       outcome,
       errors,
-    };
-    await store.insertLine(line);
-    lines.push(line);
+    });
   }
 
   const batch: ImportBatch = {
@@ -154,6 +181,12 @@ export async function stageImport(
     unchanged_count: lines.filter((line) => line.outcome === "UNCHANGED")
       .length,
   };
+
+  await Promise.all([
+    store.upsertQuestions([...questionsToWrite.values()]),
+    store.upsertVersions([...versionsToWrite.values()]),
+    store.insertLines(lines),
+  ]);
   await store.insertBatch(batch);
 
   return { batch, lines };
