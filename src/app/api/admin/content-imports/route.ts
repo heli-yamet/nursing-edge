@@ -7,7 +7,7 @@ import {
 import { createMongoContentStore } from "@/lib/mongo-content-store";
 
 export const runtime = "nodejs";
-export const maxDuration = 900;
+export const maxDuration = 120;
 
 export function OPTIONS(req: Request) {
   return emptyAdminCors(req);
