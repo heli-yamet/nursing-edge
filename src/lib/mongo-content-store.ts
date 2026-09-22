@@ -3,6 +3,7 @@ import type { ContentStore } from "@/lib/content-store";
 import type {
   ImportBatch,
   ImportLine,
+  ImportedQuestionSummary,
   Question,
   QuestionVersion,
 } from "@/lib/learner-types";
@@ -112,6 +113,32 @@ export async function createMongoContentStore(): Promise<ContentStore> {
     },
     async listLines(batch_id) {
       return lines.find({ batch_id }).toArray();
+    },
+    async listImportedQuestions() {
+      const [questionDocs, versionDocs] = await Promise.all([
+        questions.find().toArray(),
+        versions.find().toArray(),
+      ]);
+      const byId = new Map(
+        questionDocs.map((question) => [question.question_id, question]),
+      );
+      const summaries: ImportedQuestionSummary[] = versionDocs.map((version) => ({
+        question_id: version.question_id,
+        question_version_id: version.question_version_id,
+        workbook_row: byId.get(version.question_id)?.workbook_row ?? "",
+        format: version.format,
+        publication_status: version.publication_status,
+      }));
+      summaries.sort((a, b) => {
+        const row = a.workbook_row.localeCompare(b.workbook_row, undefined, {
+          numeric: true,
+        });
+        if (row !== 0) {
+          return row;
+        }
+        return a.question_version_id.localeCompare(b.question_version_id);
+      });
+      return summaries;
     },
   };
 }

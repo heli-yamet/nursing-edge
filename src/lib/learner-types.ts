@@ -198,3 +198,11 @@ export type ImportLine = {
   outcome: ImportLineOutcome;
   errors: string[];
 };
+
+export type ImportedQuestionSummary = {
+  question_id: string;
+  question_version_id: string;
+  workbook_row: string;
+  format: QuestionFormat;
+  publication_status: PublicationStatus;
+};

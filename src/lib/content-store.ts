@@ -1,6 +1,7 @@
 import type {
   ImportBatch,
   ImportLine,
+  ImportedQuestionSummary,
   Question,
   QuestionVersion,
 } from "@/lib/learner-types";
@@ -23,6 +24,7 @@ export type ContentStore = {
   insertLines(lines: ImportLine[]): Promise<void>;
   listBatches(): Promise<ImportBatch[]>;
   listLines(batch_id: string): Promise<ImportLine[]>;
+  listImportedQuestions(): Promise<ImportedQuestionSummary[]>;
 };
 
 export type MemoryContentStore = ContentStore & {
@@ -108,6 +110,25 @@ export function createMemoryContentStore(): MemoryContentStore {
     },
     async listLines(batch_id) {
       return lines.filter((line) => line.batch_id === batch_id);
+    },
+    async listImportedQuestions() {
+      return [...versions.values()]
+        .map((version) => ({
+          question_id: version.question_id,
+          question_version_id: version.question_version_id,
+          workbook_row: questions.get(version.question_id)?.workbook_row ?? "",
+          format: version.format,
+          publication_status: version.publication_status,
+        }))
+        .sort((a, b) => {
+          const row = a.workbook_row.localeCompare(b.workbook_row, undefined, {
+            numeric: true,
+          });
+          if (row !== 0) {
+            return row;
+          }
+          return a.question_version_id.localeCompare(b.question_version_id);
+        });
     },
   };
 }

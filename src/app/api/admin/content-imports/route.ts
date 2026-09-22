@@ -27,8 +27,15 @@ export async function GET(req: Request) {
       return jsonWithAdminCors(req, { ok: true, lines });
     }
 
-    const batches = (await store.listBatches()).slice().reverse();
-    return jsonWithAdminCors(req, { ok: true, batches });
+    const [batches, imported] = await Promise.all([
+      store.listBatches(),
+      store.listImportedQuestions(),
+    ]);
+    return jsonWithAdminCors(req, {
+      ok: true,
+      batches: batches.slice().reverse(),
+      questions: imported,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "server_error";
     return jsonWithAdminCors(req, { ok: false, error: message }, 500);

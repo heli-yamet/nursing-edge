@@ -54,6 +54,10 @@ describe("content import", () => {
     const version = store.versions.get("M2-CLEANUP-SELECTED-0001");
     expect(version?.publication_status).toBe("STAGED");
     expect(version && isLearnerEligible(version)).toBe(false);
+    const imported = await store.listImportedQuestions();
+    expect(imported).toHaveLength(1);
+    expect(imported[0]?.question_version_id).toBe("M2-CLEANUP-SELECTED-0001");
+    expect(imported[0]?.publication_status).toBe("STAGED");
   });
 
   it("records FAILED lines for invalid rows", async () => {
