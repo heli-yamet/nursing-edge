@@ -49,6 +49,13 @@ async function ensureIndexes(db: Db): Promise<void> {
     .collection("entitlements")
     .createIndex({ entitlement_id: 1 }, { unique: true });
   await db.collection("entitlements").createIndex({ learner_id: 1 });
+  await db.collection("entitlements").createIndex(
+    { shopify_subscription_id: 1 },
+    {
+      unique: true,
+      partialFilterExpression: { shopify_subscription_id: { $type: "string" } },
+    },
+  );
 
   await db
     .collection("questions")

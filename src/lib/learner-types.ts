@@ -80,13 +80,16 @@ export type Learner = {
 
 export type Entitlement = {
   entitlement_id: string;
-  learner_id: string;
+  learner_id: string | null;
   source: EntitlementSource;
   status: EntitlementStatus;
   shopify_customer_id: string | null;
+  shopify_subscription_id: string | null;
+  email_hint: string | null;
   paid_through_at: Date | null;
   revoked_at: Date | null;
   created_at: Date;
+  updated_at: Date;
 };
 
 export type Question = {
