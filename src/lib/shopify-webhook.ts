@@ -152,6 +152,19 @@ function extractSubscriptionId(
     }
   }
 
+  if (topic === "orders/paid" || topic.startsWith("orders/")) {
+    const orderGid = asString(payload.admin_graphql_api_id);
+    if (orderGid?.includes("/Order/")) {
+      return orderGid;
+    }
+    const orderId = asString(payload.id);
+    if (orderId) {
+      return orderId.startsWith("gid://")
+        ? orderId
+        : `gid://shopify/Order/${orderId}`;
+    }
+  }
+
   return null;
 }
 
@@ -230,6 +243,7 @@ function signalFromTopicAndStatus(
   if (
     loweredStatus === "active" ||
     loweredStatus === "paid" ||
+    loweredTopic === "orders/paid" ||
     loweredTopic.startsWith("subscription_contracts/") ||
     loweredTopic.includes("billing_attempt")
   ) {
