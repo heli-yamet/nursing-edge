@@ -78,6 +78,13 @@ export type Learner = {
   created_at: Date;
 };
 
+export type LearnerCode = {
+  email: string;
+  code: string;
+  last_generated: Date;
+  last_tried: Date | null;
+};
+
 export type Entitlement = {
   entitlement_id: string;
   learner_id: string | null;

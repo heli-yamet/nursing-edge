@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { STATUS_SITE_URL } from "@/lib/site";
 
 export default function Home() {
@@ -10,11 +11,25 @@ export default function Home() {
         Practice, Review, and Progress will live here. The learner app is in
         progress.
       </p>
+      <div className="mt-8 flex flex-wrap gap-3">
+        <Link
+          href="/sign-in"
+          className="inline-flex min-h-[48px] items-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C]"
+        >
+          Sign in
+        </Link>
+        <Link
+          href="/register"
+          className="inline-flex min-h-[48px] items-center rounded-[10px] border border-[#D9E1E5] bg-white px-5 text-base font-medium text-[#163A59]"
+        >
+          Create account
+        </Link>
+      </div>
       {STATUS_SITE_URL ? (
         <p className="mt-6">
           <a
             href={STATUS_SITE_URL}
-            className="inline-flex min-h-[48px] items-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C]"
+            className="text-base font-medium text-[#0B7F86] underline"
           >
             View status and changelog
           </a>

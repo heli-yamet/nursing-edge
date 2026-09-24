@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { LearnerRegisterForm } from "@/components/LearnerRegisterForm";
 
 export const metadata: Metadata = {
   title: "Create account",
@@ -12,18 +12,11 @@ export default function RegisterPage() {
         Create your Nursing Edge account
       </h1>
       <p className="mt-4 max-w-xl text-base leading-7 text-[#24313A]">
-        If you just subscribed, payment stays on Shopify. Account sign-up and
-        linking that subscription come next. No password is created from a
-        payment event.
+        Enter your name, email, and password. We email an 8-digit code to
+        confirm the address. If that email matches an unclaimed subscription,
+        we link it to this account. Payment stays on Shopify.
       </p>
-      <p className="mt-6">
-        <Link
-          href="/"
-          className="inline-flex min-h-[48px] items-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C]"
-        >
-          Back to Nursing Edge
-        </Link>
-      </p>
+      <LearnerRegisterForm />
     </main>
   );
 }

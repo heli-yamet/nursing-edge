@@ -44,11 +44,15 @@ async function ensureIndexes(db: Db): Promise<void> {
 
   await db.collection("learners").createIndex({ learner_id: 1 }, { unique: true });
   await db.collection("learners").createIndex({ email: 1 }, { unique: true });
+  await db
+    .collection("learner_codes")
+    .createIndex({ email: 1 }, { unique: true });
 
   await db
     .collection("entitlements")
     .createIndex({ entitlement_id: 1 }, { unique: true });
   await db.collection("entitlements").createIndex({ learner_id: 1 });
+  await db.collection("entitlements").createIndex({ email_hint: 1 });
   await db.collection("entitlements").createIndex(
     { shopify_subscription_id: 1 },
     {
