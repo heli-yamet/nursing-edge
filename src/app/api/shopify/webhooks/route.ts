@@ -1,40 +1,28 @@
-import {
-  gateShopifyWebhook,
-  persistUnclaimedShopifyEntitlement,
-} from "@/lib/shopify-webhook";
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   const rawBody = await req.text();
-  console.log(JSON.parse(rawBody));
-  const gated = gateShopifyWebhook({
-    rawBody,
-    hmacHeader: req.headers.get("x-shopify-hmac-sha256"),
-    shopHeader: req.headers.get("x-shopify-shop-domain"),
-    topicHeader: req.headers.get("x-shopify-topic"),
-    secret: process.env.SHOPIFY_WEBHOOK_SECRET ?? null,
-    expectedShop: process.env.SHOPIFY_STORE_DOMAIN ?? null,
-    now: new Date(),
-  });
 
-  if (!gated.ok) {
-    return Response.json(
-      { ok: false, error: gated.error },
-      { status: gated.status },
-    );
-  }
-
-  if (!gated.event) {
-    return Response.json({ ok: true, ignored: true });
-  }
-
+  let body: unknown = rawBody;
   try {
-    await persistUnclaimedShopifyEntitlement(gated.event);
-    return Response.json({ ok: true });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "server_error";
-    return Response.json({ ok: false, error: message }, { status: 500 });
+    body = rawBody ? JSON.parse(rawBody) : null;
+  } catch {
+    body = rawBody;
   }
+
+  const received = {
+    body,
+    headers: {
+      "x-shopify-topic": req.headers.get("x-shopify-topic"),
+      "x-shopify-shop-domain": req.headers.get("x-shopify-shop-domain"),
+      "x-shopify-hmac-sha256": req.headers.get("x-shopify-hmac-sha256"),
+      "x-shopify-webhook-id": req.headers.get("x-shopify-webhook-id"),
+      "x-shopify-api-version": req.headers.get("x-shopify-api-version"),
+      "x-shopify-triggered-at": req.headers.get("x-shopify-triggered-at"),
+    },
+  };
+
+  console.log(received);
+  return Response.json({ ok: true, received });
 }
