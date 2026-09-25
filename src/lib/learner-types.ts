@@ -99,6 +99,18 @@ export type Entitlement = {
   updated_at: Date;
 };
 
+export type AccessGrantOutcome = "GRANTED" | "REJECTED";
+
+export type AccessGrantAudit = {
+  audit_id: string;
+  actor_admin_id: string;
+  email: string;
+  occurred_at: Date;
+  outcome: AccessGrantOutcome;
+  reason: string | null;
+  entitlement_id: string | null;
+};
+
 export type Question = {
   question_id: string;
   topic_id: string;

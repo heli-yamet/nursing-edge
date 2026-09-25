@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/mongo";
 import type {
+  AccessGrantAudit,
   Attempt,
   Entitlement,
   Exposure,
@@ -19,6 +20,10 @@ export async function learners() {
 
 export async function entitlements() {
   return (await getDb()).collection<Entitlement>("entitlements");
+}
+
+export async function accessGrantAudits() {
+  return (await getDb()).collection<AccessGrantAudit>("access_grant_audits");
 }
 
 export async function questions() {

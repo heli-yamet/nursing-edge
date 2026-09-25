@@ -60,6 +60,22 @@ async function ensureIndexes(db: Db): Promise<void> {
       partialFilterExpression: { shopify_subscription_id: { $type: "string" } },
     },
   );
+  await db.collection("entitlements").createIndex(
+    { source: 1, email_hint: 1 },
+    {
+      name: "active_manual_grant_email",
+      unique: true,
+      partialFilterExpression: {
+        source: "MANUAL_GRANT",
+        status: "ACTIVE",
+        email_hint: { $type: "string" },
+      },
+    },
+  );
+  await db
+    .collection("access_grant_audits")
+    .createIndex({ audit_id: 1 }, { unique: true });
+  await db.collection("access_grant_audits").createIndex({ occurred_at: -1 });
 
   await db
     .collection("questions")
