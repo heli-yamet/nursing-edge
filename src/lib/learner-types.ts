@@ -221,6 +221,17 @@ export type ImportLine = {
   errors: string[];
 };
 
+export type PublishLineOutcome = "PUBLISHED" | "REJECTED";
+
+export type PublishAudit = {
+  audit_id: string;
+  actor_admin_id: string;
+  occurred_at: Date;
+  question_version_ids: string[];
+  outcome: PublishLineOutcome;
+  reason: string | null;
+};
+
 export type ImportedQuestionSummary = {
   question_id: string;
   question_version_id: string;

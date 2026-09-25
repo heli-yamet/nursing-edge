@@ -127,4 +127,9 @@ async function ensureIndexes(db: Db): Promise<void> {
   await db.collection("import_lines").createIndex({ line_id: 1 }, { unique: true });
   await db.collection("import_lines").createIndex({ batch_id: 1 });
   await db.collection("import_lines").createIndex({ question_version_id: 1 });
+
+  await db
+    .collection("publish_audits")
+    .createIndex({ audit_id: 1 }, { unique: true });
+  await db.collection("publish_audits").createIndex({ occurred_at: -1 });
 }

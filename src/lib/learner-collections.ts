@@ -6,6 +6,7 @@ import type {
   Exposure,
   ImportBatch,
   ImportLine,
+  PublishAudit,
   Learner,
   Question,
   QuestionVersion,
@@ -40,6 +41,10 @@ export async function importBatches() {
 
 export async function importLines() {
   return (await getDb()).collection<ImportLine>("import_lines");
+}
+
+export async function publishAudits() {
+  return (await getDb()).collection<PublishAudit>("publish_audits");
 }
 
 export async function sessions() {
