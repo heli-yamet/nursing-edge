@@ -12,9 +12,9 @@ export default function RegisterPage() {
         Create your Nursing Edge account
       </h1>
       <p className="mt-4 max-w-xl text-base leading-7 text-[#24313A]">
-        Enter your name, email, and password. We email an 8-digit code to
-        confirm the address. If that email matches an unclaimed subscription,
-        we link it to this account. Payment stays on Shopify.
+        Enter your name, email, and password. We email an 8-digit code only
+        when this address already has a paid subscription or a manual grant.
+        Payment stays on Shopify.
       </p>
       <LearnerRegisterForm />
     </main>

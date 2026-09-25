@@ -7,13 +7,17 @@ import { useRouter } from "next/navigation";
 type CheckResponse = {
   check: boolean;
   code: boolean | null;
+  reason?: "exists" | "unpaid" | "paid" | "granted" | null;
 };
 
 type RegisterResponse = {
-  result: "exists" | "code" | "success" | "invalid_request" | "error";
+  result: "exists" | "unpaid" | "code" | "success" | "invalid_request" | "error";
   rateLimited?: boolean;
   access?: boolean;
 };
+
+const PURCHASE_FIRST =
+  "Purchase a Nursing Edge plan before creating an account.";
 
 function isEightDigits(value: string): boolean {
   return /^\d{8}$/.test(value);
@@ -75,7 +79,12 @@ export function LearnerRegisterForm() {
       }
 
       if (!data.check) {
-        show("This email already has an account. Sign in instead.", "error");
+        show(
+          data.reason === "unpaid"
+            ? PURCHASE_FIRST
+            : "This email already has an account. Sign in instead.",
+          "error",
+        );
         return;
       }
 
@@ -115,6 +124,10 @@ export function LearnerRegisterForm() {
       }
       if (data.result === "exists") {
         show("This email already has an account. Sign in instead.", "error");
+        return;
+      }
+      if (data.result === "unpaid") {
+        show(PURCHASE_FIRST, "error");
         return;
       }
       if (data.result === "code") {

@@ -51,6 +51,37 @@ export function claimEntitlements(
   });
 }
 
+export type RegistrationGate = "paid" | "granted" | "unpaid";
+
+export function registrationGate(
+  rows: Entitlement[],
+  email: string,
+): RegistrationGate {
+  const matching = rows.filter((row) => entitlementMatchesEmail(row, email));
+  if (
+    matching.some(
+      (row) => row.source === "MANUAL_GRANT" && row.status === "ACTIVE",
+    )
+  ) {
+    return "granted";
+  }
+  if (matching.some((row) => row.source === "SHOPIFY")) {
+    return "paid";
+  }
+  return "unpaid";
+}
+
+export async function registrationGateForEmail(
+  email: string,
+): Promise<RegistrationGate> {
+  const hint = normalizeLearnerEmail(email);
+  const rows = await (await entitlements())
+    .find({ email_hint: hint })
+    .collation({ locale: "en", strength: 2 })
+    .toArray();
+  return registrationGate(rows, email);
+}
+
 export function learnerHasAccess(
   rows: Entitlement[],
   learnerId: string,

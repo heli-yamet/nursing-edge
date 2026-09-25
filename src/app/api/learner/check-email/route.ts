@@ -1,5 +1,8 @@
 import { findLearnerByEmail, sendLearnerCode } from "@/lib/learner-auth";
-import { isValidLearnerEmail } from "@/lib/learner-access";
+import {
+  isValidLearnerEmail,
+  registrationGateForEmail,
+} from "@/lib/learner-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,11 +20,16 @@ export async function POST(req: Request) {
     }
 
     if (await findLearnerByEmail(email)) {
-      return Response.json({ check: false, code: null });
+      return Response.json({ check: false, code: null, reason: "exists" });
+    }
+
+    const gate = await registrationGateForEmail(email);
+    if (gate === "unpaid") {
+      return Response.json({ check: false, code: null, reason: "unpaid" });
     }
 
     const sent = await sendLearnerCode(email);
-    return Response.json({ check: true, code: sent });
+    return Response.json({ check: true, code: sent, reason: gate });
   } catch (error) {
     const message = error instanceof Error ? error.message : "server_error";
     return Response.json(

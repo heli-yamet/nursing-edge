@@ -1,5 +1,8 @@
 import { MongoServerError } from "mongodb";
-import { readLearnerAccess } from "@/lib/learner-access";
+import {
+  readLearnerAccess,
+  registrationGateForEmail,
+} from "@/lib/learner-access";
 import {
   checkLearnerCode,
   consumeLearnerCode,
@@ -31,6 +34,10 @@ export async function POST(req: Request) {
 
     if (await findLearnerByEmail(email)) {
       return Response.json({ result: "exists" });
+    }
+
+    if ((await registrationGateForEmail(email)) === "unpaid") {
+      return Response.json({ result: "unpaid" });
     }
 
     const codeCheck = await checkLearnerCode(email, code);
