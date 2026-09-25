@@ -226,3 +226,39 @@ export async function linkAndReadAccess(learner: Learner): Promise<boolean> {
   await claimUnclaimedEntitlements(learner.learner_id, learner.email);
   return readLearnerAccess(learner.learner_id);
 }
+
+export async function acceptCurrentTerms(
+  learnerId: string,
+  now: Date = new Date(),
+): Promise<Learner | null> {
+  const existing = await findLearnerById(learnerId);
+  if (!existing) {
+    return null;
+  }
+  if (existing.terms_accepted_at) {
+    return existing;
+  }
+  await (await learners()).updateOne(
+    { learner_id: learnerId, terms_accepted_at: null },
+    { $set: { terms_accepted_at: now } },
+  );
+  return findLearnerById(learnerId);
+}
+
+export async function completeOrientation(
+  learnerId: string,
+  now: Date = new Date(),
+): Promise<Learner | null> {
+  const existing = await findLearnerById(learnerId);
+  if (!existing || !existing.terms_accepted_at) {
+    return existing;
+  }
+  if (existing.orientation_completed_at) {
+    return existing;
+  }
+  await (await learners()).updateOne(
+    { learner_id: learnerId, orientation_completed_at: null },
+    { $set: { orientation_completed_at: now } },
+  );
+  return findLearnerById(learnerId);
+}

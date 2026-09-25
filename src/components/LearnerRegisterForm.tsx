@@ -1,5 +1,6 @@
 "use client";
 
+import { entryDestination } from "@/lib/learner-entry";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -14,6 +15,7 @@ type RegisterResponse = {
   result: "exists" | "unpaid" | "code" | "success" | "invalid_request" | "error";
   rateLimited?: boolean;
   access?: boolean;
+  next?: string;
 };
 
 const PURCHASE_FIRST =
@@ -135,7 +137,7 @@ export function LearnerRegisterForm() {
         return;
       }
       if (data.result === "success") {
-        router.push("/account");
+        router.push(entryDestination(data.next));
         router.refresh();
         return;
       }

@@ -1,5 +1,6 @@
 "use client";
 
+import { entryDestination } from "@/lib/learner-entry";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -15,6 +16,7 @@ type SignInResponse = {
     | "invalid_request"
     | "error";
   rateLimited?: boolean;
+  next?: string;
 };
 
 function isEightDigits(value: string): boolean {
@@ -128,7 +130,7 @@ export function LearnerSignInForm() {
         return;
       }
       if (data.result === "success") {
-        router.push("/account");
+        router.push(entryDestination(data.next));
         router.refresh();
         return;
       }

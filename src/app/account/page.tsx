@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { redirect } from "next/navigation";
+import { LearnerNav } from "@/components/LearnerNav";
 import { LearnerSignOutButton } from "@/components/LearnerSignOutButton";
-import { learnerFromToken, linkAndReadAccess } from "@/lib/learner-auth";
-import { readLearnerSessionToken } from "@/lib/learner-cookie";
+import { requireEntryStep } from "@/lib/learner-gate";
+import { linkAndReadAccess } from "@/lib/learner-auth";
 
 export const metadata: Metadata = {
   title: "Account",
@@ -12,12 +11,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AccountPage() {
-  const token = await readLearnerSessionToken();
-  const learner = await learnerFromToken(token);
-  if (!learner) {
-    redirect("/sign-in");
-  }
-
+  const learner = await requireEntryStep("app");
   const access = await linkAndReadAccess(learner);
 
   return (
@@ -39,14 +33,9 @@ export default async function AccountPage() {
           customer id.
         </p>
       )}
-      <div className="mt-8 flex flex-wrap gap-3">
+      <LearnerNav current="account" />
+      <div className="mt-8">
         <LearnerSignOutButton />
-        <Link
-          href="/"
-          className="inline-flex min-h-[48px] items-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C]"
-        >
-          Back to Nursing Edge
-        </Link>
       </div>
     </main>
   );

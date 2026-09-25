@@ -3,6 +3,7 @@ import {
   readLearnerAccess,
   registrationGateForEmail,
 } from "@/lib/learner-access";
+import { learnerEntryPath } from "@/lib/learner-entry";
 import {
   checkLearnerCode,
   consumeLearnerCode,
@@ -57,7 +58,11 @@ export async function POST(req: Request) {
     await setLearnerSession(learner);
     const access = await readLearnerAccess(learner.learner_id);
 
-    return Response.json({ result: "success", access });
+    return Response.json({
+      result: "success",
+      access,
+      next: learnerEntryPath(learner),
+    });
   } catch (error) {
     if (error instanceof MongoServerError && error.code === 11000) {
       return Response.json({ result: "exists" });

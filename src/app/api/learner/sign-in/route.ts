@@ -1,3 +1,4 @@
+import { learnerEntryPath } from "@/lib/learner-entry";
 import {
   checkLearnerCode,
   consumeLearnerCode,
@@ -54,7 +55,11 @@ export async function POST(req: Request) {
     await consumeLearnerCode(email);
     await setLearnerSession(learner);
     const access = await linkAndReadAccess(learner);
-    return Response.json({ result: "success", access });
+    return Response.json({
+      result: "success",
+      access,
+      next: learnerEntryPath(learner),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "server_error";
     return Response.json({ result: "error", error: message }, { status: 500 });
