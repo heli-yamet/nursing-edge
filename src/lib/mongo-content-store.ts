@@ -140,5 +140,8 @@ export async function createMongoContentStore(): Promise<ContentStore> {
       });
       return summaries;
     },
+    async listQuestionVersions() {
+      return versions.find().toArray();
+    },
   };
 }

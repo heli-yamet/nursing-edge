@@ -25,6 +25,7 @@ export type ContentStore = {
   listBatches(): Promise<ImportBatch[]>;
   listLines(batch_id: string): Promise<ImportLine[]>;
   listImportedQuestions(): Promise<ImportedQuestionSummary[]>;
+  listQuestionVersions(): Promise<QuestionVersion[]>;
 };
 
 export type MemoryContentStore = ContentStore & {
@@ -129,6 +130,9 @@ export function createMemoryContentStore(): MemoryContentStore {
           }
           return a.question_version_id.localeCompare(b.question_version_id);
         });
+    },
+    async listQuestionVersions() {
+      return [...versions.values()];
     },
   };
 }

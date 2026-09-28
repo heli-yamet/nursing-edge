@@ -4,6 +4,7 @@ import {
   importC2Buffer,
   inspectContentImportFile,
 } from "@/lib/content-import";
+import { buildEligibilityReport } from "@/lib/eligibility-report";
 import { createMongoContentStore } from "@/lib/mongo-content-store";
 
 export const runtime = "nodejs";
@@ -27,14 +28,16 @@ export async function GET(req: Request) {
       return jsonWithAdminCors(req, { ok: true, lines });
     }
 
-    const [batches, imported] = await Promise.all([
+    const [batches, imported, versions] = await Promise.all([
       store.listBatches(),
       store.listImportedQuestions(),
+      store.listQuestionVersions(),
     ]);
     return jsonWithAdminCors(req, {
       ok: true,
       batches: batches.slice().reverse(),
       questions: imported,
+      eligibility: buildEligibilityReport(versions),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "server_error";
