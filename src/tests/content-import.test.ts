@@ -58,6 +58,7 @@ describe("content import", () => {
     expect(imported).toHaveLength(1);
     expect(imported[0]?.question_version_id).toBe("M2-CLEANUP-SELECTED-0001");
     expect(imported[0]?.publication_status).toBe("STAGED");
+    expect(imported[0]?.active).toBe(true);
   });
 
   it("records FAILED lines for invalid rows", async () => {

@@ -128,6 +128,7 @@ export async function createMongoContentStore(): Promise<ContentStore> {
         workbook_row: byId.get(version.question_id)?.workbook_row ?? "",
         format: version.format,
         publication_status: version.publication_status,
+        active: version.active,
       }));
       summaries.sort((a, b) => {
         const row = a.workbook_row.localeCompare(b.workbook_row, undefined, {

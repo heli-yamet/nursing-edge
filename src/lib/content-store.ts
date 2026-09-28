@@ -120,6 +120,7 @@ export function createMemoryContentStore(): MemoryContentStore {
           workbook_row: questions.get(version.question_id)?.workbook_row ?? "",
           format: version.format,
           publication_status: version.publication_status,
+          active: version.active,
         }))
         .sort((a, b) => {
           const row = a.workbook_row.localeCompare(b.workbook_row, undefined, {

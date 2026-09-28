@@ -17,11 +17,22 @@ export function isSupportedInteraction(format: string): boolean {
   return format === "MCQ" || format === "SATA";
 }
 
+export function isMvpEligible(version: QuestionVersion): boolean {
+  return (
+    isLearnerEligible(version) && isSupportedInteraction(version.format)
+  );
+}
+
+export function listEligibleVersions(
+  versions: QuestionVersion[],
+): QuestionVersion[] {
+  return versions.filter(isMvpEligible);
+}
+
 export function buildEligibilityReport(
   versions: QuestionVersion[],
 ): EligibilityReport {
   let published = 0;
-  let mvp_eligible = 0;
   let unsupported_interaction = 0;
 
   for (const version of versions) {
@@ -31,15 +42,10 @@ export function buildEligibilityReport(
     if (version.publication_status === "PUBLISHED") {
       published += 1;
     }
-    if (
-      isLearnerEligible(version) &&
-      isSupportedInteraction(version.format)
-    ) {
-      mvp_eligible += 1;
-    }
   }
 
   const imported = versions.length;
+  const mvp_eligible = listEligibleVersions(versions).length;
   return {
     imported,
     published,

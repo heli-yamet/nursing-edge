@@ -132,4 +132,9 @@ async function ensureIndexes(db: Db): Promise<void> {
     .collection("publish_audits")
     .createIndex({ audit_id: 1 }, { unique: true });
   await db.collection("publish_audits").createIndex({ occurred_at: -1 });
+
+  await db
+    .collection("pause_audits")
+    .createIndex({ audit_id: 1 }, { unique: true });
+  await db.collection("pause_audits").createIndex({ occurred_at: -1 });
 }

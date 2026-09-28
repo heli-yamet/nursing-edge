@@ -222,6 +222,7 @@ export type ImportLine = {
 };
 
 export type PublishLineOutcome = "PUBLISHED" | "REJECTED";
+export type PauseLineOutcome = "PAUSED" | "REJECTED";
 
 export type PublishAudit = {
   audit_id: string;
@@ -232,10 +233,20 @@ export type PublishAudit = {
   reason: string | null;
 };
 
+export type PauseAudit = {
+  audit_id: string;
+  actor_admin_id: string;
+  occurred_at: Date;
+  question_version_ids: string[];
+  outcome: PauseLineOutcome;
+  reason: string | null;
+};
+
 export type ImportedQuestionSummary = {
   question_id: string;
   question_version_id: string;
   workbook_row: string;
   format: QuestionFormat;
   publication_status: PublicationStatus;
+  active: boolean;
 };

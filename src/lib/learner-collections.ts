@@ -7,6 +7,7 @@ import type {
   ImportBatch,
   ImportLine,
   PublishAudit,
+  PauseAudit,
   Learner,
   Question,
   QuestionVersion,
@@ -45,6 +46,10 @@ export async function importLines() {
 
 export async function publishAudits() {
   return (await getDb()).collection<PublishAudit>("publish_audits");
+}
+
+export async function pauseAudits() {
+  return (await getDb()).collection<PauseAudit>("pause_audits");
 }
 
 export async function sessions() {
