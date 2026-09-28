@@ -22,6 +22,8 @@ function applyAdminCors(req: Request, response: Response): void {
     .split(",")
     .map((value) => value.trim());
 
+  console.log("CORS origin", origin);
+
   if (origin && allowed.includes(origin)) {
     response.headers.set("Access-Control-Allow-Origin", origin);
     response.headers.set("Access-Control-Allow-Credentials", "true");
