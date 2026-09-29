@@ -82,16 +82,33 @@ export async function registrationGateForEmail(
   return registrationGate(rows, email);
 }
 
+export function shopifyPaidThroughCovers(
+  paidThroughAt: Date | null,
+  now: Date,
+): boolean {
+  if (paidThroughAt === null) {
+    return true;
+  }
+  return now.getTime() <= paidThroughAt.getTime();
+}
+
 export function learnerHasAccess(
   rows: Entitlement[],
   learnerId: string,
+  now: Date = new Date(),
 ): boolean {
-  return rows.some(
-    (row) =>
-      row.learner_id === learnerId &&
-      row.status === "ACTIVE" &&
-      (row.source === "SHOPIFY" || row.source === "MANUAL_GRANT"),
-  );
+  return rows.some((row) => {
+    if (row.learner_id !== learnerId || row.status !== "ACTIVE") {
+      return false;
+    }
+    if (row.source === "MANUAL_GRANT") {
+      return true;
+    }
+    if (row.source === "SHOPIFY") {
+      return shopifyPaidThroughCovers(row.paid_through_at, now);
+    }
+    return false;
+  });
 }
 
 export function buildManualGrant(learnerId: string, now: Date): Entitlement {
@@ -127,12 +144,26 @@ export async function claimUnclaimedEntitlements(
   return result.modifiedCount;
 }
 
-export async function readLearnerAccess(learnerId: string): Promise<boolean> {
-  const collection = await entitlements();
-  const found = await collection.findOne({
+export async function readLearnerAccess(
+  learnerId: string,
+  now: Date = new Date(),
+): Promise<boolean> {
+  const rows = await (await entitlements())
+    .find({
+      learner_id: learnerId,
+      status: "ACTIVE",
+      source: { $in: ["SHOPIFY", "MANUAL_GRANT"] },
+    })
+    .toArray();
+  return learnerHasAccess(rows, learnerId, now);
+}
+
+export async function readLearnerShopifyLinked(
+  learnerId: string,
+): Promise<boolean> {
+  const found = await (await entitlements()).findOne({
     learner_id: learnerId,
-    status: "ACTIVE",
-    source: { $in: ["SHOPIFY", "MANUAL_GRANT"] },
+    source: "SHOPIFY",
   });
   return Boolean(found);
 }

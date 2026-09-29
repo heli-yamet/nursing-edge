@@ -1,14 +1,11 @@
 "use client";
 
-import { entryDestination } from "@/lib/learner-entry";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
-type SignInResponse = {
+type ResetResponse = {
   result:
-    | "credentials"
-    | "unverified"
+    | "unknown"
     | "code_sent"
     | "wait"
     | "code"
@@ -16,16 +13,14 @@ type SignInResponse = {
     | "invalid_request"
     | "error";
   rateLimited?: boolean;
-  next?: string;
 };
 
 function isEightDigits(value: string): boolean {
   return /^\d{8}$/.test(value);
 }
 
-export function LearnerSignInForm() {
-  const router = useRouter();
-  const [step, setStep] = useState<"credentials" | "code">("credentials");
+export function LearnerResetPasswordForm() {
+  const [step, setStep] = useState<"email" | "reset" | "done">("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -51,9 +46,10 @@ export function LearnerSignInForm() {
     return () => window.clearTimeout(timer);
   }, [tryWait]);
 
-  const verifyEnabled = useMemo(
-    () => isEightDigits(code) && tryWait === 0 && !busy,
-    [busy, code, tryWait],
+  const resetEnabled = useMemo(
+    () =>
+      isEightDigits(code) && password.length >= 8 && tryWait === 0 && !busy,
+    [busy, code, password.length, tryWait],
   );
 
   function show(text: string, tone: "info" | "error") {
@@ -65,37 +61,33 @@ export function LearnerSignInForm() {
     setBusy(true);
     setMessage("");
     try {
-      const response = await fetch("/api/learner/sign-in", {
+      const response = await fetch("/api/learner/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email }),
       });
-      const data = (await response.json()) as SignInResponse;
+      const data = (await response.json()) as ResetResponse;
       if (!response.ok) {
         show("Could not send the code. Try again.", "error");
         return;
       }
-      if (data.result === "credentials") {
-        show("Email or password does not match.", "error");
-        return;
-      }
-      if (data.result === "unverified") {
-        show("Confirm your email before signing in.", "error");
+      if (data.result === "unknown") {
+        show("No Nursing Edge account uses that email.", "error");
         return;
       }
       if (data.result === "wait") {
-        setStep("code");
+        setStep("reset");
         setSendWait(60);
         show("Please wait 1 minute before sending another code.", "error");
         return;
       }
       if (data.result === "code_sent") {
-        setStep("code");
+        setStep("reset");
         setSendWait(60);
         show("We sent an 8-digit code to your email.", "info");
         return;
       }
-      show("Sign in failed. Try again.", "error");
+      show("Could not send the code. Try again.", "error");
     } catch {
       show("Could not reach the server. Try again.", "error");
     } finally {
@@ -103,26 +95,26 @@ export function LearnerSignInForm() {
     }
   }
 
-  async function verify() {
-    if (!verifyEnabled) {
+  async function resetPassword() {
+    if (!resetEnabled) {
       return;
     }
     setBusy(true);
     setMessage("");
     setTryWait(3);
     try {
-      const response = await fetch("/api/learner/sign-in", {
+      const response = await fetch("/api/learner/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, code }),
       });
-      const data = (await response.json()) as SignInResponse;
+      const data = (await response.json()) as ResetResponse;
       if (data.rateLimited) {
         show("Try again in 3 seconds.", "error");
         return;
       }
-      if (data.result === "credentials") {
-        show("Email or password does not match.", "error");
+      if (data.result === "unknown") {
+        show("No Nursing Edge account uses that email.", "error");
         return;
       }
       if (data.result === "code") {
@@ -130,11 +122,11 @@ export function LearnerSignInForm() {
         return;
       }
       if (data.result === "success") {
-        router.push(entryDestination(data.next));
-        router.refresh();
+        setStep("done");
+        show("Your password is updated. Sign in with the new password.", "info");
         return;
       }
-      show("Sign in failed. Try again.", "error");
+      show("Could not reset the password. Try again.", "error");
     } catch {
       show("Could not reach the server. Try again.", "error");
     } finally {
@@ -142,19 +134,34 @@ export function LearnerSignInForm() {
     }
   }
 
-  const locked = step === "code";
   const fieldClass =
     "mt-2 min-h-[48px] w-full rounded-[10px] border border-[#D9E1E5] bg-white px-3 text-base text-[#24313A] read-only:bg-[#F7F9FA]";
+
+  if (step === "done") {
+    return (
+      <div className="mt-8 space-y-5">
+        <p className="text-sm leading-6 text-[#163A59]" role="status">
+          {message}
+        </p>
+        <Link
+          className="inline-flex min-h-[48px] w-full items-center justify-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C]"
+          href="/sign-in"
+        >
+          Sign in
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <form
       className="mt-8 space-y-5"
       onSubmit={(event) => {
         event.preventDefault();
-        if (step === "credentials") {
+        if (step === "email") {
           void requestCode();
         } else {
-          void verify();
+          void resetPassword();
         }
       }}
     >
@@ -164,40 +171,44 @@ export function LearnerSignInForm() {
           type="email"
           autoComplete="email"
           required
-          readOnly={locked}
+          readOnly={step === "reset"}
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           className={fieldClass}
         />
       </label>
-      <label className="block">
-        <span className="text-sm font-medium text-[#163A59]">Password</span>
-        <input
-          type="password"
-          autoComplete="current-password"
-          required
-          readOnly={locked}
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          className={fieldClass}
-        />
-      </label>
-      {step === "code" ? (
-        <label className="block">
-          <span className="text-sm font-medium text-[#163A59]">
-            8-digit code
-          </span>
-          <input
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={8}
-            value={code}
-            onChange={(event) =>
-              setCode(event.target.value.replace(/\D/g, "").slice(0, 8))
-            }
-            className="mt-2 min-h-[48px] w-full rounded-[10px] border border-[#D9E1E5] bg-white px-3 text-base tracking-[0.3em] text-[#24313A]"
-          />
-        </label>
+      {step === "reset" ? (
+        <>
+          <label className="block">
+            <span className="text-sm font-medium text-[#163A59]">
+              8-digit code
+            </span>
+            <input
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={8}
+              value={code}
+              onChange={(event) =>
+                setCode(event.target.value.replace(/\D/g, "").slice(0, 8))
+              }
+              className="mt-2 min-h-[48px] w-full rounded-[10px] border border-[#D9E1E5] bg-white px-3 text-base tracking-[0.3em] text-[#24313A]"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-[#163A59]">
+              New password
+            </span>
+            <input
+              type="password"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className={fieldClass}
+            />
+          </label>
+        </>
       ) : null}
       {message ? (
         <p
@@ -211,22 +222,22 @@ export function LearnerSignInForm() {
           {message}
         </p>
       ) : null}
-      {step === "credentials" ? (
+      {step === "email" ? (
         <button
           type="submit"
           disabled={busy}
           className="inline-flex min-h-[48px] w-full items-center justify-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C] disabled:opacity-60"
         >
-          Continue
+          Send code
         </button>
       ) : (
         <div className="space-y-3">
           <button
             type="submit"
-            disabled={!verifyEnabled}
+            disabled={!resetEnabled}
             className="inline-flex min-h-[48px] w-full items-center justify-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C] disabled:opacity-60"
           >
-            {tryWait > 0 ? `Try ${tryWait}s later` : "Verify and sign in"}
+            {tryWait > 0 ? `Try ${tryWait}s later` : "Reset password"}
           </button>
           <button
             type="button"
@@ -241,14 +252,9 @@ export function LearnerSignInForm() {
         </div>
       )}
       <p className="text-sm text-[#66727A]">
-        <Link className="text-[#0B7F86] underline" href="/reset-password">
-          Forgot password?
-        </Link>
-      </p>
-      <p className="text-sm text-[#66727A]">
-        Need an account?{" "}
-        <Link className="text-[#0B7F86] underline" href="/register">
-          Create account
+        Remember your password?{" "}
+        <Link className="text-[#0B7F86] underline" href="/sign-in">
+          Sign in
         </Link>
       </p>
     </form>

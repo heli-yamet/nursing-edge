@@ -49,6 +49,22 @@ export function signInInputOk(input: {
   return code.length === 0 || /^\d{8}$/.test(code);
 }
 
+export function resetPasswordRequestOk(input: { email: string }): boolean {
+  return isValidLearnerEmail(input.email);
+}
+
+export function resetPasswordInputOk(input: {
+  email: string;
+  password: string;
+  code: string;
+}): boolean {
+  return (
+    isValidLearnerEmail(input.email) &&
+    input.password.length >= 8 &&
+    /^\d{8}$/.test(input.code.trim())
+  );
+}
+
 export async function learnerCodes() {
   return (await getDb()).collection<LearnerCode>("learner_codes");
 }
@@ -69,7 +85,7 @@ export async function findLearnerById(
 
 export async function sendLearnerCode(
   email: string,
-  purpose: "signup" | "signin" = "signup",
+  purpose: "signup" | "signin" | "reset" = "signup",
 ): Promise<boolean> {
   const normalized = normalizeLearnerEmail(email);
   const codes = await learnerCodes();
@@ -111,7 +127,9 @@ export async function sendLearnerCode(
     text:
       purpose === "signin"
         ? `Your verification code is ${code}. It is for signing in to your Nursing Edge account.`
-        : `Your verification code is ${code}. It is for creating your Nursing Edge account.`,
+        : purpose === "reset"
+          ? `Your verification code is ${code}. It is for resetting your Nursing Edge password.`
+          : `Your verification code is ${code}. It is for creating your Nursing Edge account.`,
   });
 
   if (error) {
@@ -200,6 +218,22 @@ export async function passwordMatches(
   password: string,
 ): Promise<boolean> {
   return bcrypt.compare(password, learner.password_hash);
+}
+
+export async function resetLearnerPassword(
+  learnerId: string,
+  password: string,
+): Promise<boolean> {
+  assertPermanentLearnerId(learnerId);
+  if (password.length < 8) {
+    return false;
+  }
+  const password_hash = await bcrypt.hash(password, 12);
+  const result = await (await learners()).updateOne(
+    { learner_id: learnerId },
+    { $set: { password_hash } },
+  );
+  return result.matchedCount === 1;
 }
 
 export async function learnerFromToken(
