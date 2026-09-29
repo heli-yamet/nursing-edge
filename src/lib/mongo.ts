@@ -137,4 +137,12 @@ async function ensureIndexes(db: Db): Promise<void> {
     .collection("pause_audits")
     .createIndex({ audit_id: 1 }, { unique: true });
   await db.collection("pause_audits").createIndex({ occurred_at: -1 });
+
+  await db
+    .collection("calibration_blueprints")
+    .createIndex({ blueprint_id: 1 }, { unique: true });
+  await db.collection("calibration_blueprints").createIndex(
+    { active: 1 },
+    { unique: true, partialFilterExpression: { active: true } },
+  );
 }

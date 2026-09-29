@@ -8,6 +8,7 @@ import type {
   ImportLine,
   PublishAudit,
   PauseAudit,
+  CalibrationBlueprint,
   Learner,
   Question,
   QuestionVersion,
@@ -50,6 +51,12 @@ export async function publishAudits() {
 
 export async function pauseAudits() {
   return (await getDb()).collection<PauseAudit>("pause_audits");
+}
+
+export async function calibrationBlueprints() {
+  return (await getDb()).collection<CalibrationBlueprint>(
+    "calibration_blueprints",
+  );
 }
 
 export async function sessions() {

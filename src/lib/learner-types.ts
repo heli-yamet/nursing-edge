@@ -250,3 +250,13 @@ export type ImportedQuestionSummary = {
   publication_status: PublicationStatus;
   active: boolean;
 };
+
+export type CalibrationBlueprint = {
+  blueprint_id: string;
+  name: string;
+  version: string;
+  question_version_ids: string[];
+  active: boolean;
+  actor_admin_id: string | null;
+  created_at: Date;
+};
