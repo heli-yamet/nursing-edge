@@ -373,6 +373,37 @@ export function mergeUnclaimedEntitlement(
   };
 }
 
+export function reconcileShopifyEntitlements(
+  existing: Entitlement[],
+  records: ShopifyPayEvent[] | null,
+  now: Date = new Date(),
+): Entitlement[] {
+  if (records === null) {
+    return existing;
+  }
+
+  let next = existing;
+  for (const record of records) {
+    const index = next.findIndex(
+      (row) =>
+        row.source === "SHOPIFY" &&
+        row.shopify_subscription_id === record.shopify_subscription_id,
+    );
+    if (index === -1) {
+      continue;
+    }
+
+    const merged = mergeUnclaimedEntitlement(next[index], record, now);
+    if (merged === next[index]) {
+      continue;
+    }
+
+    next = next.map((row, rowIndex) => (rowIndex === index ? merged : row));
+  }
+
+  return next;
+}
+
 export async function persistUnclaimedShopifyEntitlement(
   event: ShopifyPayEvent,
 ): Promise<Entitlement> {
