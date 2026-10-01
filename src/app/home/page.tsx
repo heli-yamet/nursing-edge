@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LearnerNav } from "@/components/LearnerNav";
-import { requireEntryStep } from "@/lib/learner-gate";
+import { LearnerShell } from "@/components/LearnerShell";
+import { requireAuthorizedLearner } from "@/lib/learner-gate";
 import { sessions } from "@/lib/learner-collections";
 import { HOME_ACTIONS, homeActionOrder } from "@/lib/session-rules";
 
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const learner = await requireEntryStep("app");
+  const learner = await requireAuthorizedLearner();
   const active = await (await sessions()).findOne(
     { learner_id: learner.learner_id, state: "ACTIVE" },
     { projection: { _id: 1 } },
@@ -24,7 +24,7 @@ export default async function HomePage() {
   });
 
   return (
-    <main className="mx-auto flex w-full max-w-[760px] flex-1 flex-col justify-center px-5 py-16 sm:px-6">
+    <LearnerShell current="home">
       <h1 className="text-[28px] leading-tight font-semibold text-[#163A59] sm:text-[32px]">
         Home
       </h1>
@@ -44,7 +44,7 @@ export default async function HomePage() {
               href={action.href}
               className={`inline-flex min-h-[48px] items-center rounded-[10px] px-5 text-base font-medium ${
                 primary
-                  ? "bg-[#0B7F86] text-white"
+                  ? "bg-[#0B7F86] text-white hover:bg-[#08666C]"
                   : "border border-[#0B7F86] bg-white text-[#0B7F86] hover:bg-[#F7F9FA]"
               }`}
             >
@@ -53,7 +53,6 @@ export default async function HomePage() {
           );
         })}
       </div>
-      <LearnerNav current="home" />
-    </main>
+    </LearnerShell>
   );
 }

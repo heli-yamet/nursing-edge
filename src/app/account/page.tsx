@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LearnerNav } from "@/components/LearnerNav";
+import { LearnerShell } from "@/components/LearnerShell";
 import { LearnerSignOutButton } from "@/components/LearnerSignOutButton";
 import { readLearnerShopifyLinked } from "@/lib/learner-access";
 import { requireEntryStep } from "@/lib/learner-gate";
@@ -21,9 +21,9 @@ export default async function AccountPage() {
     : null;
 
   return (
-    <main className="mx-auto flex w-full max-w-[760px] flex-1 flex-col justify-center px-5 py-16 sm:px-6">
+    <LearnerShell current="account">
       <h1 className="text-[28px] leading-tight font-semibold text-[#163A59] sm:text-[32px]">
-        Hello, {learner.first_name}
+        Account
       </h1>
       <p className="mt-4 max-w-xl text-base leading-7 text-[#24313A]">
         Signed in as {learner.email}.
@@ -32,33 +32,33 @@ export default async function AccountPage() {
         <p className="mt-4 max-w-xl text-base leading-7 text-[#24313A]">
           Your Nursing Edge access is active.
         </p>
-      ) : shopifyLinked ? (
-        <p className="mt-4 max-w-xl text-base leading-7 text-[#24313A]">
-          Your Nursing Edge access is currently unavailable. Use Manage
-          Subscription if this account is paid through Shopify. Your history
-          stays on this account.
-        </p>
       ) : (
-        <p className="mt-4 max-w-xl text-base leading-7 text-[#24313A]">
-          No subscription is linked to this email yet. If you paid with a
-          different email, support can link the purchase using your Shopify
-          customer id.
-        </p>
+        <div
+          role="status"
+          className="mt-6 rounded-[12px] border border-[#D9E1E5] bg-[#E8F5F5] px-4 py-3 text-base leading-7 text-[#163A59]"
+        >
+          {shopifyLinked
+            ? "Your Nursing Edge access is currently unavailable. If your access is Shopify-linked, use Manage Subscription; otherwise contact support."
+            : "No subscription is linked to this email yet. If you paid with a different email, support can link the purchase using your Shopify customer id."}
+        </div>
       )}
-      <LearnerNav current="account" />
       <div className="mt-8 flex flex-wrap gap-3">
         {manageSubscriptionUrl ? (
           <a
             href={manageSubscriptionUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-[48px] items-center rounded-[10px] border border-[#0B7F86] bg-white px-5 text-base font-medium text-[#0B7F86] hover:bg-[#F7F9FA]"
+            className={`inline-flex min-h-[48px] items-center rounded-[10px] px-5 text-base font-medium ${
+              access
+                ? "border border-[#0B7F86] bg-white text-[#0B7F86] hover:bg-[#F7F9FA]"
+                : "bg-[#0B7F86] text-white hover:bg-[#08666C]"
+            }`}
           >
             Manage Subscription
           </a>
         ) : null}
         <LearnerSignOutButton />
       </div>
-    </main>
+    </LearnerShell>
   );
 }

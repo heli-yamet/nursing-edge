@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { LearnerNav } from "@/components/LearnerNav";
-import { requireEntryStep } from "@/lib/learner-gate";
+import { LearnerShell } from "@/components/LearnerShell";
+import { requireAuthorizedLearner } from "@/lib/learner-gate";
 
 export const metadata: Metadata = {
   title: "Review",
@@ -9,10 +9,10 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function ReviewPage() {
-  await requireEntryStep("app");
+  await requireAuthorizedLearner();
 
   return (
-    <main className="mx-auto flex w-full max-w-[760px] flex-1 flex-col justify-center px-5 py-16 sm:px-6">
+    <LearnerShell current="review">
       <h1 className="text-[28px] leading-tight font-semibold text-[#163A59] sm:text-[32px]">
         Review
       </h1>
@@ -20,7 +20,6 @@ export default async function ReviewPage() {
         No review items yet. Complete a practice session to begin building your
         review.
       </p>
-      <LearnerNav current="review" />
-    </main>
+    </LearnerShell>
   );
 }

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { readLearnerAccess } from "@/lib/learner-access";
 import { learnerEntryPath, learnerEntryStep } from "@/lib/learner-entry";
 import { learnerFromToken } from "@/lib/learner-auth";
 import { readLearnerSessionToken } from "@/lib/learner-cookie";
@@ -26,6 +27,14 @@ export async function requireEntryStep(
   }
   if (step !== expected) {
     redirect(learnerEntryPath(learner));
+  }
+  return learner;
+}
+
+export async function requireAuthorizedLearner(): Promise<Learner> {
+  const learner = await requireEntryStep("app");
+  if (!(await readLearnerAccess(learner.learner_id))) {
+    redirect("/account");
   }
   return learner;
 }
