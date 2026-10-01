@@ -20,8 +20,8 @@ export async function POST(req: Request) {
     hasHmac,
     bodyLength: rawBody.length,
     body: JSON.stringify(JSON.parse(rawBody)),
-    bodyReq: req.body,
   });
+  console.log("Payload", JSON.parse(rawBody));
 
   const gated = gateShopifyWebhook({
     rawBody,
