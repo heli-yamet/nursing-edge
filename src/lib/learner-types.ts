@@ -251,6 +251,25 @@ export type ImportedQuestionSummary = {
   active: boolean;
 };
 
+export type CalibrationState =
+  | "NOT_CHOSEN"
+  | "STARTED"
+  | "COMPLETED"
+  | "DECLINED";
+
+export type Calibration = {
+  calibration_id: string;
+  learner_id: string;
+  state: Exclude<CalibrationState, "NOT_CHOSEN">;
+  blueprint_id: string | null;
+  blueprint_version: string | null;
+  assigned_versions: AssignedVersion[];
+  started_at: Date | null;
+  completed_at: Date | null;
+  declined_at: Date | null;
+  created_at: Date;
+};
+
 export type CalibrationBlueprint = {
   blueprint_id: string;
   name: string;

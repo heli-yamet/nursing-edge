@@ -145,4 +145,11 @@ async function ensureIndexes(db: Db): Promise<void> {
     { active: 1 },
     { unique: true, partialFilterExpression: { active: true } },
   );
+
+  await db
+    .collection("calibrations")
+    .createIndex({ calibration_id: 1 }, { unique: true });
+  await db
+    .collection("calibrations")
+    .createIndex({ learner_id: 1 }, { unique: true });
 }

@@ -8,6 +8,7 @@ import type {
   ImportLine,
   PublishAudit,
   PauseAudit,
+  Calibration,
   CalibrationBlueprint,
   Learner,
   Question,
@@ -59,6 +60,10 @@ export async function calibrationBlueprints() {
   );
 }
 
+export async function calibrations() {
+  return (await getDb()).collection<Calibration>("calibrations");
+}
+
 export async function sessions() {
   return (await getDb()).collection<Session>("sessions");
 }
@@ -87,6 +92,17 @@ export async function findAttemptById(
   attempt_id: string,
 ): Promise<Attempt | null> {
   return (await attempts()).findOne({ attempt_id });
+}
+
+export async function findAttemptsByLearner(
+  learner_id: string,
+): Promise<Pick<Attempt, "question_version_id" | "committed_at">[]> {
+  return (await attempts())
+    .find(
+      { learner_id },
+      { projection: { _id: 0, question_version_id: 1, committed_at: 1 } },
+    )
+    .toArray();
 }
 
 export async function findAttemptsBySession(
