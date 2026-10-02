@@ -1,5 +1,15 @@
+import {
+  deliverGrantInvitation,
+  learnerSiteUrl,
+  sendWithResend,
+  type InvitationSender,
+} from "@/lib/grant-invitation";
 import { newPermanentId } from "@/lib/ids";
-import { accessGrantAudits, entitlements } from "@/lib/learner-collections";
+import {
+  accessGrantAudits,
+  entitlements,
+  learners,
+} from "@/lib/learner-collections";
 import type {
   AccessGrantAudit,
   AccessGrantOutcome,
@@ -232,12 +242,14 @@ export type UnpaidGrantResult = {
   email: string;
   reason: string | null;
   entitlement_id: string | null;
+  invitation_sent: boolean | null;
 };
 
 export async function grantUnpaidAccess(input: {
   actorAdminId: string;
   email: string;
   now?: Date;
+  sendInvitation?: InvitationSender;
 }): Promise<UnpaidGrantResult> {
   const now = input.now ?? new Date();
   const hint = normalizeLearnerEmail(input.email);
@@ -262,6 +274,7 @@ export async function grantUnpaidAccess(input: {
       email: decision.email,
       reason: decision.reason,
       entitlement_id: null,
+      invitation_sent: null,
     };
   }
 
@@ -290,22 +303,38 @@ export async function grantUnpaidAccess(input: {
       email: decision.email,
       reason: ACTIVE_GRANT_REASON,
       entitlement_id: null,
+      invitation_sent: null,
     };
   }
+
+  const hasAccount = Boolean(
+    await (await learners()).findOne(
+      { email: decision.email },
+      { projection: { _id: 1 } },
+    ),
+  );
+  const invitation = await deliverGrantInvitation({
+    email: decision.email,
+    hasAccount,
+    siteUrl: learnerSiteUrl,
+    send: input.sendInvitation ?? sendWithResend,
+  });
 
   await recordAccessGrantAudit({
     actorAdminId: input.actorAdminId,
     email: decision.email,
     occurredAt: now,
     outcome: "GRANTED",
-    reason: null,
+    reason: invitation.sent ? null : `Invitation not sent: ${invitation.error}`,
     entitlementId: row.entitlement_id,
+    invitationSent: invitation.sent,
   });
   return {
     outcome: "GRANTED",
     email: decision.email,
     reason: null,
     entitlement_id: row.entitlement_id,
+    invitation_sent: invitation.sent,
   };
 }
 
@@ -326,6 +355,7 @@ async function recordAccessGrantAudit(input: {
   outcome: AccessGrantOutcome;
   reason: string | null;
   entitlementId: string | null;
+  invitationSent?: boolean;
 }): Promise<void> {
   const audit: AccessGrantAudit = {
     audit_id: newPermanentId(),
@@ -335,6 +365,7 @@ async function recordAccessGrantAudit(input: {
     outcome: input.outcome,
     reason: input.reason,
     entitlement_id: input.entitlementId,
+    invitation_sent: input.invitationSent ?? null,
   };
   await (await accessGrantAudits()).insertOne(audit);
 }

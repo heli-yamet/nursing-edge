@@ -109,6 +109,7 @@ export type AccessGrantAudit = {
   outcome: AccessGrantOutcome;
   reason: string | null;
   entitlement_id: string | null;
+  invitation_sent?: boolean | null;
 };
 
 export type Question = {

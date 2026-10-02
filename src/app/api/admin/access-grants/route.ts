@@ -28,6 +28,7 @@ export async function GET(req: Request) {
         occurred_at: audit.occurred_at,
         outcome: audit.outcome,
         reason: audit.reason,
+        invitation_sent: audit.invitation_sent ?? null,
       })),
     });
   } catch (error) {
@@ -55,6 +56,7 @@ export async function POST(req: Request) {
       email: result.email,
       reason: result.reason,
       entitlement_id: result.entitlement_id,
+      invitation_sent: result.invitation_sent,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "server_error";
