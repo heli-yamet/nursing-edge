@@ -26,6 +26,13 @@ export function isPracticeSize(value: unknown): value is PracticeSize {
   return PRACTICE_SIZES.some((size) => size === value);
 }
 
+export function practiceScopeLabel(scope: string): string {
+  if (scope === ALL_TOPICS) {
+    return "All Topics";
+  }
+  return LEARNER_TOPICS.find((topic) => topic.topic_id === scope)?.name ?? scope;
+}
+
 export function sizeIsAvailable(supply: number, size: PracticeSize): boolean {
   return supply >= size;
 }

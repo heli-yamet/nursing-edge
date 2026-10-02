@@ -1,4 +1,4 @@
-import { MongoClient, type Db } from "mongodb";
+import { MongoClient, type ClientSession, type Db } from "mongodb";
 
 const uri = process.env.MONGODB_URI;
 
@@ -29,6 +29,19 @@ export async function getDb(): Promise<Db> {
   }
   await globalMongo._schemaIndexes;
   return db;
+}
+
+export async function runInTransaction<T>(
+  work: (session: ClientSession) => Promise<T>,
+): Promise<T> {
+  await getDb();
+  const client = await getClientPromise();
+  const session = client.startSession();
+  try {
+    return await session.withTransaction(() => work(session));
+  } finally {
+    await session.endSession();
+  }
 }
 
 async function ensureIndexes(db: Db): Promise<void> {
