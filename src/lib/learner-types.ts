@@ -222,7 +222,7 @@ export type ImportLine = {
 };
 
 export type PublishLineOutcome = "PUBLISHED" | "REJECTED";
-export type PauseLineOutcome = "PAUSED" | "REJECTED";
+export type PauseLineOutcome = "PAUSED" | "RESUMED" | "REJECTED";
 
 export type PublishAudit = {
   audit_id: string;
