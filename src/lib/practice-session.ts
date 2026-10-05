@@ -1,5 +1,5 @@
 import { newPermanentId } from "@/lib/ids";
-import type { Session } from "@/lib/learner-types";
+import { CURRENT_RULE_SET_VERSION, type Session } from "@/lib/learner-types";
 import {
   isPracticeScope,
   isPracticeSize,
@@ -82,6 +82,7 @@ export async function startPracticeSession(input: {
     state: "ACTIVE",
     assigned_versions: selection.assigned_versions,
     created_at: input.now ?? new Date(),
+    rule_set_version: CURRENT_RULE_SET_VERSION,
   };
 
   if ((await input.store.insert(session)) === "inserted") {

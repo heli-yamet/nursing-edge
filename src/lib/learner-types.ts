@@ -153,6 +153,7 @@ export type Session = {
   state: SessionState;
   assigned_versions: AssignedVersion[];
   created_at: Date;
+  rule_set_version: string;
 };
 
 export type Attempt = {

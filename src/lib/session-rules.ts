@@ -1,4 +1,9 @@
-import type { AssignedVersion, SessionState, SessionType } from "@/lib/learner-types";
+import {
+  CURRENT_RULE_SET_VERSION,
+  type AssignedVersion,
+  type SessionState,
+  type SessionType,
+} from "@/lib/learner-types";
 
 export type HomeActionId =
   | "continue-session"
@@ -44,4 +49,24 @@ export function sessionQuestionsAreUnique(
 ): boolean {
   const ids = assigned.map((item) => item.question_id);
   return new Set(ids).size === ids.length;
+}
+
+export function stampRuleSetForCommit<T extends object>(
+  session: T,
+): { session: T & { rule_set_version: string }; version: string } {
+  const existing =
+    "rule_set_version" in session && typeof session.rule_set_version === "string"
+      ? session.rule_set_version
+      : "";
+  if (existing) {
+    return {
+      session: session as T & { rule_set_version: string },
+      version: existing,
+    };
+  }
+  const rule_set_version = CURRENT_RULE_SET_VERSION;
+  return {
+    session: { ...session, rule_set_version },
+    version: rule_set_version,
+  };
 }

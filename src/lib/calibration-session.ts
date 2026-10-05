@@ -1,10 +1,11 @@
 import { CALIBRATION_BLUEPRINT_SIZE } from "@/lib/calibration-blueprint";
 import type { CalibrationAssignment } from "@/lib/calibration-entry";
 import { newPermanentId } from "@/lib/ids";
-import type {
-  Calibration,
-  CalibrationBlueprint,
-  Session,
+import {
+  CURRENT_RULE_SET_VERSION,
+  type Calibration,
+  type CalibrationBlueprint,
+  type Session,
 } from "@/lib/learner-types";
 import { ALL_TOPICS } from "@/lib/practice-options";
 import { sessionQuestionsAreUnique } from "@/lib/session-rules";
@@ -74,6 +75,7 @@ export async function startBaselineSession(input: {
     state: "ACTIVE",
     assigned_versions: assigned,
     created_at: now,
+    rule_set_version: CURRENT_RULE_SET_VERSION,
   };
   const calibration: Calibration = {
     calibration_id: newId(),
