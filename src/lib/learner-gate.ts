@@ -14,6 +14,14 @@ export async function requireLearner(): Promise<Learner> {
   return learner;
 }
 
+export async function redirectSignedInLearner(): Promise<void> {
+  const token = await readLearnerSessionToken();
+  const learner = await learnerFromToken(token);
+  if (learner) {
+    redirect("/home");
+  }
+}
+
 export async function requireEntryStep(
   expected: "terms" | "orientation" | "app",
 ): Promise<Learner> {

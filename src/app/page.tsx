@@ -1,7 +1,12 @@
 import Link from "next/link";
+import { redirectSignedInLearner } from "@/lib/learner-gate";
 import { STATUS_SITE_URL } from "@/lib/site";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  await redirectSignedInLearner();
+
   return (
     <main className="mx-auto flex w-full max-w-[760px] flex-1 flex-col justify-center px-5 py-16 sm:px-6">
       <h1 className="text-[28px] leading-tight font-semibold text-[#163A59] sm:text-[32px]">
