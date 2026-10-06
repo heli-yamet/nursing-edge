@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LearnerShell } from "@/components/LearnerShell";
-import { OpenQuestion } from "@/components/OpenQuestion";
+import { QuestionBrowse } from "@/components/QuestionBrowse";
 import { requireAuthorizedLearner } from "@/lib/learner-gate";
 import { loadOpenPlayerQuestion } from "@/lib/player-load";
 
@@ -27,13 +27,10 @@ export default async function PracticeSessionPage() {
   return (
     <LearnerShell current="practice">
       {loaded.result === "open" ? (
-        <OpenQuestion
+        <QuestionBrowse
           label={TYPE_LABELS[loaded.type]}
-          position={loaded.position}
           size={loaded.size}
-          stem={loaded.question.stem}
-          format={loaded.question.format}
-          options={loaded.question.options}
+          questions={loaded.questions}
         />
       ) : loaded.result === "unavailable" ? (
         <p className="text-base leading-7 text-[#24313A]" role="status">

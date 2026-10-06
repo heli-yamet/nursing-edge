@@ -21,6 +21,7 @@ export function OpenQuestion({
   stem,
   format,
   options,
+  onNext,
 }: {
   label: string;
   position: number;
@@ -28,6 +29,7 @@ export function OpenQuestion({
   stem: string;
   format: QuestionFormat;
   options: PreCommitOption[];
+  onNext?: () => void;
 }) {
   const answerName = useId();
   const confidenceName = useId();
@@ -131,13 +133,27 @@ export function OpenQuestion({
           </div>
         </fieldset>
       ) : null}
-      <div className="mt-8">
+      <div className="mt-8 flex flex-wrap gap-3">
         <button
           type="button"
+          hidden
           disabled={!submitReady}
           className="inline-flex min-h-[48px] items-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C] disabled:opacity-60"
         >
           Submit Answer
+        </button>
+        <button
+          type="button"
+          disabled={!onNext || !submitReady}
+          onClick={() => {
+            if (!onNext || !submitReady) {
+              return;
+            }
+            onNext();
+          }}
+          className="inline-flex min-h-[48px] items-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C] disabled:opacity-60"
+        >
+          Next Question
         </button>
       </div>
     </article>
