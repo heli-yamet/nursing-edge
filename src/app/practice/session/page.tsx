@@ -32,6 +32,7 @@ export default async function PracticeSessionPage() {
           position={loaded.position}
           size={loaded.size}
           stem={loaded.question.stem}
+          format={loaded.question.format}
           options={loaded.question.options}
         />
       ) : loaded.result === "unavailable" ? (

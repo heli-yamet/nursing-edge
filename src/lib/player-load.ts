@@ -1,3 +1,4 @@
+import { isSupportedInteraction } from "@/lib/eligibility-report";
 import { findAttemptsBySession, questionVersions } from "@/lib/learner-collections";
 import type { SessionType } from "@/lib/learner-types";
 import {
@@ -48,6 +49,7 @@ export async function loadOpenPlayerQuestion(
     {
       projection: {
         _id: 0,
+        format: 1,
         stem: 1,
         "options.option_id": 1,
         "options.displayed_option": 1,
@@ -55,7 +57,11 @@ export async function loadOpenPlayerQuestion(
       },
     },
   );
-  if (!version?.stem || !version.options) {
+  if (
+    !version?.stem ||
+    !version.options ||
+    !isSupportedInteraction(version.format)
+  ) {
     return { result: "unavailable" };
   }
 

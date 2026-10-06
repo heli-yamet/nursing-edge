@@ -1,4 +1,4 @@
-import type { AssignedVersion } from "@/lib/learner-types";
+import type { AssignedVersion, QuestionFormat } from "@/lib/learner-types";
 
 export type PreCommitOption = {
   option_id: string;
@@ -7,6 +7,7 @@ export type PreCommitOption = {
 };
 
 export type PreCommitQuestion = {
+  format: QuestionFormat;
   stem: string;
   options: PreCommitOption[];
 };
@@ -36,6 +37,7 @@ export function nextOpenAssignment(
 }
 
 export function toPreCommitQuestion(version: {
+  format: QuestionFormat;
   stem: string;
   options: Array<{
     option_id: string;
@@ -44,6 +46,7 @@ export function toPreCommitQuestion(version: {
   }>;
 }): PreCommitQuestion {
   return {
+    format: version.format,
     stem: version.stem,
     options: version.options.map((option) => ({
       option_id: option.option_id,
