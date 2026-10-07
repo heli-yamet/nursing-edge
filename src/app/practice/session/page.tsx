@@ -25,7 +25,7 @@ export default async function PracticeSessionPage() {
   }
 
   return (
-    <LearnerShell current="practice">
+    <LearnerShell current="practice" wide>
       {loaded.result === "open" ? (
         <OpenQuestion
           key={loaded.position}

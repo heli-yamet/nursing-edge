@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CONFIDENCE_CHOICES,
@@ -15,6 +16,15 @@ import type { PreCommitOption } from "@/lib/player-question";
 
 const choiceClass =
   "flex min-h-[48px] cursor-pointer items-start gap-3 rounded-[10px] border border-[#D9E1E5] bg-white px-4 py-3 text-base leading-7 text-[#24313A] has-[:checked]:border-[#0B7F86] has-[:checked]:bg-[#E8F5F5] has-[:disabled]:cursor-not-allowed has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[#0B7F86]";
+
+const confidenceClass =
+  "flex min-h-[72px] cursor-pointer items-start gap-3 rounded-[10px] border border-[#D9E1E5] bg-white px-3 py-3 text-left has-[:checked]:border-[#0B7F86] has-[:checked]:bg-[#E8F5F5] has-[:disabled]:cursor-not-allowed has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[#0B7F86]";
+
+const secondaryButtonClass =
+  "inline-flex min-h-[48px] w-full items-center justify-center rounded-[10px] border border-[#D9E1E5] bg-white px-5 text-base font-medium text-[#163A59] hover:bg-[#F7F9FA] sm:w-auto";
+
+const primaryButtonClass =
+  "inline-flex min-h-[48px] w-full items-center justify-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto";
 
 const SUBMIT_FAILURE =
   "Your answer was not submitted. Check your connection and try again.";
@@ -150,11 +160,11 @@ export function OpenQuestion({
       >
         {label}
       </h1>
-      <p className="mt-4 text-base font-medium text-[#163A59]">
+      <p className="mt-2 text-base font-medium text-[#163A59]">
         Question {position} of {size}
       </p>
       <div
-        className="mt-3 h-2 overflow-hidden rounded-full bg-[#E6EEF0]"
+        className="mt-2 h-2 overflow-hidden rounded-full bg-[#E6EEF0]"
         role="progressbar"
         aria-valuemin={1}
         aria-valuemax={size}
@@ -164,14 +174,14 @@ export function OpenQuestion({
       >
         <div className="h-full bg-[#0B7F86]" style={{ width: `${progress}%` }} />
       </div>
-      <p className="mt-8 text-base leading-7 whitespace-pre-wrap text-[#24313A]">
+      <p className="mt-5 text-base leading-7 whitespace-pre-wrap text-[#24313A]">
         {stem}
       </p>
-      <fieldset className="mt-6" disabled={locked}>
-        <legend className="text-xl font-semibold text-[#163A59]">
+      <fieldset className="mt-4" disabled={locked}>
+        <legend className="sr-only">
           {format === "MCQ" ? "Select one answer" : "Select all that apply"}
         </legend>
-        <div className="mt-4 grid gap-3">
+        <div className="grid gap-2">
           {options.map((option) => (
             <label key={option.option_id} className={choiceClass}>
               <input
@@ -193,26 +203,26 @@ export function OpenQuestion({
         </div>
       </fieldset>
       {answerReady && !reveal ? (
-        <fieldset className="mt-8" disabled={pending}>
+        <fieldset className="mt-5" disabled={pending}>
           <legend className="text-xl font-semibold text-[#163A59]">
             How certain are you about your answer?
           </legend>
-          <div className="mt-4 grid gap-3">
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
             {CONFIDENCE_CHOICES.map((choice) => (
-              <label key={choice.value} className={choiceClass}>
+              <label key={choice.value} className={confidenceClass}>
                 <input
                   type="radio"
                   name={confidenceName}
                   value={choice.value}
                   checked={confidence === choice.value}
                   onChange={() => setConfidence(choice.value)}
-                  className="mt-1 h-5 w-5 accent-[#0B7F86]"
+                  className="mt-1 h-5 w-5 shrink-0 accent-[#0B7F86]"
                 />
                 <span>
                   <span className="block font-medium text-[#163A59]">
                     {choice.label}
                   </span>
-                  <span className="mt-1 block text-sm leading-6">
+                  <span className="mt-1 block text-sm leading-5 text-[#24313A]">
                     {choice.meaning}
                   </span>
                 </span>
@@ -222,17 +232,17 @@ export function OpenQuestion({
         </fieldset>
       ) : null}
       {reveal ? (
-        <section className="mt-8" aria-live="polite">
+        <section className="mt-5" aria-live="polite">
           <h2 className="text-xl font-semibold text-[#163A59]">{reveal.outcome}</h2>
-          <h3 className="mt-6 text-base font-semibold text-[#163A59]">
+          <h3 className="mt-4 text-base font-semibold text-[#163A59]">
             Your answer
           </h3>
           <OptionList options={reveal.selection} />
-          <h3 className="mt-6 text-base font-semibold text-[#163A59]">
+          <h3 className="mt-4 text-base font-semibold text-[#163A59]">
             Correct answer
           </h3>
           <OptionList options={reveal.correct_options} />
-          <p className="mt-6 text-base leading-7 text-[#24313A]">
+          <p className="mt-4 text-base leading-7 text-[#24313A]">
             <span className="font-medium text-[#163A59]">Confidence: </span>
             {reveal.confidence}
           </p>
@@ -240,7 +250,7 @@ export function OpenQuestion({
             <span className="font-medium text-[#163A59]">Topic: </span>
             {reveal.topic}
           </p>
-          <h3 className="mt-6 text-base font-semibold text-[#163A59]">
+          <h3 className="mt-4 text-base font-semibold text-[#163A59]">
             Rationale
           </h3>
           <p className="mt-2 text-base leading-7 whitespace-pre-wrap text-[#24313A]">
@@ -253,13 +263,16 @@ export function OpenQuestion({
           {error}
         </p>
       ) : null}
-      <div className="mt-8 flex flex-wrap gap-3">
+      <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Link href="/home" className={secondaryButtonClass}>
+          Save and Exit
+        </Link>
         {reveal ? (
           <button
             type="button"
             onClick={advance}
             disabled={pendingNav}
-            className="inline-flex min-h-[48px] items-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C] disabled:opacity-60"
+            className={primaryButtonClass}
           >
             {isLast ? "View Results" : "Next Question"}
           </button>
@@ -270,7 +283,7 @@ export function OpenQuestion({
             onClick={() => {
               void submitAnswer();
             }}
-            className="inline-flex min-h-[48px] items-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C] disabled:opacity-60"
+            className={primaryButtonClass}
           >
             Submit Answer
           </button>
