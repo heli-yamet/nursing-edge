@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   CONFIDENCE_CHOICES,
   applyOptionChoice,
@@ -8,33 +9,75 @@ import {
   confidenceAfterSelectionChange,
   isValidAnswer,
 } from "@/lib/answer-selection";
+import type { FactualReveal } from "@/lib/factual-reveal";
 import type { Confidence, QuestionFormat } from "@/lib/learner-types";
 import type { PreCommitOption } from "@/lib/player-question";
 
 const choiceClass =
   "flex min-h-[48px] cursor-pointer items-start gap-3 rounded-[10px] border border-[#D9E1E5] bg-white px-4 py-3 text-base leading-7 text-[#24313A] has-[:checked]:border-[#0B7F86] has-[:checked]:bg-[#E8F5F5] has-[:disabled]:cursor-not-allowed has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[#0B7F86]";
 
+const SUBMIT_FAILURE =
+  "Your answer was not submitted. Check your connection and try again.";
+
+function isReveal(value: unknown): value is FactualReveal {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const reveal = value as FactualReveal;
+  return (
+    (reveal.outcome === "Correct" || reveal.outcome === "Incorrect") &&
+    (reveal.confidence === "Unsure" ||
+      reveal.confidence === "Sure" ||
+      reveal.confidence === "Confident") &&
+    typeof reveal.topic === "string" &&
+    typeof reveal.learner_core_rationale === "string" &&
+    Array.isArray(reveal.selection) &&
+    Array.isArray(reveal.correct_options)
+  );
+}
+
+function OptionList({ options }: { options: FactualReveal["selection"] }) {
+  return (
+    <ul className="mt-2 grid gap-2">
+      {options.map((option) => (
+        <li key={option.option_id} className="text-base leading-7 text-[#24313A]">
+          <span className="font-medium text-[#163A59]">
+            {option.displayed_option}.
+          </span>{" "}
+          {option.option_text}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function OpenQuestion({
   label,
   position,
   size,
+  questionVersionId,
   stem,
   format,
   options,
-  onNext,
 }: {
   label: string;
   position: number;
   size: number;
+  questionVersionId: string;
   stem: string;
   format: QuestionFormat;
   options: PreCommitOption[];
-  onNext?: () => void;
 }) {
+  const router = useRouter();
+  const [pendingNav, startNav] = useTransition();
   const answerName = useId();
   const confidenceName = useId();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [confidence, setConfidence] = useState<Confidence | null>(null);
+  const [reveal, setReveal] = useState<FactualReveal | null>(null);
+  const [isLast, setIsLast] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const optionIds = options.map((option) => option.option_id);
   const answerReady = isValidAnswer(format, optionIds, selectedIds);
   const submitReady = canSubmitAnswer(
@@ -45,13 +88,58 @@ export function OpenQuestion({
   );
   const progress = size > 0 ? Math.round((position / size) * 100) : 0;
   const inputType = format === "MCQ" ? "radio" : "checkbox";
+  const locked = reveal !== null || pending;
 
   function chooseOption(optionId: string) {
+    if (locked) {
+      return;
+    }
     const nextIds = applyOptionChoice(format, selectedIds, optionId);
     setSelectedIds(nextIds);
     setConfidence(
       confidenceAfterSelectionChange(selectedIds, nextIds, confidence),
     );
+  }
+
+  async function submitAnswer() {
+    if (!submitReady || !confidence || locked) {
+      return;
+    }
+    setPending(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/learner/sessions/commit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          position,
+          question_version_id: questionVersionId,
+          selected_option_ids: selectedIds,
+          confidence,
+        }),
+      });
+      const body = (await response.json()) as {
+        ok?: boolean;
+        reveal?: unknown;
+        is_last?: unknown;
+      };
+      if (!response.ok || !body.ok || !isReveal(body.reveal)) {
+        setError(SUBMIT_FAILURE);
+        return;
+      }
+      setReveal(body.reveal);
+      setIsLast(body.is_last === true);
+    } catch {
+      setError(SUBMIT_FAILURE);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  function advance() {
+    startNav(() => {
+      router.refresh();
+    });
   }
 
   return (
@@ -79,7 +167,7 @@ export function OpenQuestion({
       <p className="mt-8 text-base leading-7 whitespace-pre-wrap text-[#24313A]">
         {stem}
       </p>
-      <fieldset className="mt-6">
+      <fieldset className="mt-6" disabled={locked}>
         <legend className="text-xl font-semibold text-[#163A59]">
           {format === "MCQ" ? "Select one answer" : "Select all that apply"}
         </legend>
@@ -104,8 +192,8 @@ export function OpenQuestion({
           ))}
         </div>
       </fieldset>
-      {answerReady ? (
-        <fieldset className="mt-8">
+      {answerReady && !reveal ? (
+        <fieldset className="mt-8" disabled={pending}>
           <legend className="text-xl font-semibold text-[#163A59]">
             How certain are you about your answer?
           </legend>
@@ -133,28 +221,60 @@ export function OpenQuestion({
           </div>
         </fieldset>
       ) : null}
+      {reveal ? (
+        <section className="mt-8" aria-live="polite">
+          <h2 className="text-xl font-semibold text-[#163A59]">{reveal.outcome}</h2>
+          <h3 className="mt-6 text-base font-semibold text-[#163A59]">
+            Your answer
+          </h3>
+          <OptionList options={reveal.selection} />
+          <h3 className="mt-6 text-base font-semibold text-[#163A59]">
+            Correct answer
+          </h3>
+          <OptionList options={reveal.correct_options} />
+          <p className="mt-6 text-base leading-7 text-[#24313A]">
+            <span className="font-medium text-[#163A59]">Confidence: </span>
+            {reveal.confidence}
+          </p>
+          <p className="mt-2 text-base leading-7 text-[#24313A]">
+            <span className="font-medium text-[#163A59]">Topic: </span>
+            {reveal.topic}
+          </p>
+          <h3 className="mt-6 text-base font-semibold text-[#163A59]">
+            Rationale
+          </h3>
+          <p className="mt-2 text-base leading-7 whitespace-pre-wrap text-[#24313A]">
+            {reveal.learner_core_rationale}
+          </p>
+        </section>
+      ) : null}
+      {error ? (
+        <p className="mt-6 text-base leading-7 text-[#24313A]" role="alert">
+          {error}
+        </p>
+      ) : null}
       <div className="mt-8 flex flex-wrap gap-3">
-        <button
-          type="button"
-          hidden
-          disabled={!submitReady}
-          className="inline-flex min-h-[48px] items-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C] disabled:opacity-60"
-        >
-          Submit Answer
-        </button>
-        <button
-          type="button"
-          disabled={!onNext || !submitReady}
-          onClick={() => {
-            if (!onNext || !submitReady) {
-              return;
-            }
-            onNext();
-          }}
-          className="inline-flex min-h-[48px] items-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C] disabled:opacity-60"
-        >
-          Next Question
-        </button>
+        {reveal ? (
+          <button
+            type="button"
+            onClick={advance}
+            disabled={pendingNav}
+            className="inline-flex min-h-[48px] items-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C] disabled:opacity-60"
+          >
+            {isLast ? "View Results" : "Next Question"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={!submitReady || pending}
+            onClick={() => {
+              void submitAnswer();
+            }}
+            className="inline-flex min-h-[48px] items-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C] disabled:opacity-60"
+          >
+            Submit Answer
+          </button>
+        )}
       </div>
     </article>
   );

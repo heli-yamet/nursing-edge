@@ -22,6 +22,8 @@ function attempt(overrides: Partial<Attempt> = {}): Attempt {
     attempt_id: "a1",
     learner_id: "learner-1",
     session_id: "session-1",
+    position: 1,
+    question_id: "q-1",
     question_version_id: "qv-1",
     selected_option_ids: ["o1"],
     confidence: "SURE",
@@ -63,6 +65,9 @@ describe("Phase 1 invariants", () => {
     const committed = attempt();
     expect(() =>
       assertAttemptUnchanged(committed, attempt({ confidence: "CONFIDENT" })),
+    ).toThrow(/immutable/i);
+    expect(() =>
+      assertAttemptUnchanged(committed, attempt({ position: 2, question_id: "q-2" })),
     ).toThrow(/immutable/i);
     expect(() => assertAttemptUnchanged(committed, attempt())).not.toThrow();
     expect(learnerCollections).not.toHaveProperty("updateAttempt");

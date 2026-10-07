@@ -107,6 +107,10 @@ async function ensureIndexes(db: Db): Promise<void> {
   );
 
   await db.collection("attempts").createIndex({ attempt_id: 1 }, { unique: true });
+  await db.collection("attempts").createIndex(
+    { session_id: 1, position: 1 },
+    { unique: true },
+  );
   await db.collection("attempts").createIndex({ session_id: 1, sequence: 1 });
   await db.collection("attempts").createIndex({ learner_id: 1 });
   await db.collection("attempts").createIndex({ question_version_id: 1 });

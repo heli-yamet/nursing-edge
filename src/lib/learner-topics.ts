@@ -56,6 +56,10 @@ const SYSTEM_TO_TOPIC: Record<string, LearnerTopicId> = {
   PERIOP_DEVICES: "nursing-management-safety-professional-practice",
 };
 
+export function learnerTopicName(topicId: string): string | null {
+  return LEARNER_TOPICS.find((topic) => topic.topic_id === topicId)?.name ?? null;
+}
+
 export function mapSourceSystem(system: string): LearnerTopicId | null {
   return SYSTEM_TO_TOPIC[system.trim()] ?? null;
 }

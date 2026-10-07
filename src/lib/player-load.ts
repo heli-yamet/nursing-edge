@@ -1,16 +1,11 @@
 import { isSupportedInteraction } from "@/lib/eligibility-report";
-import { questionVersions } from "@/lib/learner-collections";
+import { attempts, questionVersions } from "@/lib/learner-collections";
 import type { SessionType } from "@/lib/learner-types";
 import {
   toPreCommitQuestion,
   type PreCommitQuestion,
 } from "@/lib/player-question";
 import { readActiveSession } from "@/lib/practice-setup";
-
-export type BrowseQuestion = {
-  position: number;
-  question: PreCommitQuestion;
-};
 
 export type PlayerLoad =
   | { result: "no_session" }
@@ -21,12 +16,13 @@ export type PlayerLoad =
       result: "open";
       type: Extract<SessionType, "PRACTICE" | "CALIBRATION">;
       size: number;
-      questions: BrowseQuestion[];
+      position: number;
+      questionVersionId: string;
+      question: PreCommitQuestion;
     };
 
 const QUESTION_PROJECTION = {
   _id: 0,
-  question_version_id: 1,
   format: 1,
   stem: 1,
   "options.option_id": 1,
@@ -46,44 +42,34 @@ export async function loadOpenPlayerQuestion(
   }
 
   const assigned = [...session.assigned_versions].sort(
-    (a, b) => a.position - b.position,
+    (left, right) => left.position - right.position,
   );
   const size = assigned.length;
-  if (size === 0) {
+  const committed = await (
+    await attempts()
+  )
+    .find(
+      { session_id: session.session_id },
+      { projection: { _id: 0, position: 1 } },
+    )
+    .toArray();
+  const done = new Set(committed.map((attempt) => attempt.position));
+  const open = assigned.find((item) => !done.has(item.position));
+  if (!open) {
     return { result: "none_open", size };
   }
 
-  const versions = await (
+  const version = await (
     await questionVersions()
-  )
-    .find(
-      {
-        question_version_id: {
-          $in: assigned.map((item) => item.question_version_id),
-        },
-      },
-      { projection: QUESTION_PROJECTION },
-    )
-    .toArray();
-  const byId = new Map(
-    versions.map((version) => [version.question_version_id, version]),
+  ).findOne(
+    { question_version_id: open.question_version_id },
+    { projection: QUESTION_PROJECTION },
   );
-  const questions: BrowseQuestion[] = [];
-  for (const item of assigned) {
-    const version = byId.get(item.question_version_id);
-    if (
-      !version?.stem ||
-      !version.options ||
-      !isSupportedInteraction(version.format)
-    ) {
-      continue;
-    }
-    questions.push({
-      position: item.position,
-      question: toPreCommitQuestion(version),
-    });
-  }
-  if (questions.length === 0) {
+  if (
+    !version?.stem ||
+    !version.options ||
+    !isSupportedInteraction(version.format)
+  ) {
     return { result: "unavailable" };
   }
 
@@ -91,6 +77,8 @@ export async function loadOpenPlayerQuestion(
     result: "open",
     type: session.type,
     size,
-    questions,
+    position: open.position,
+    questionVersionId: open.question_version_id,
+    question: toPreCommitQuestion(version),
   };
 }

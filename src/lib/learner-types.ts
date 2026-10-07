@@ -160,6 +160,8 @@ export type Attempt = {
   attempt_id: string;
   learner_id: string;
   session_id: string;
+  position: number;
+  question_id: string;
   question_version_id: string;
   selected_option_ids: string[];
   confidence: Confidence;

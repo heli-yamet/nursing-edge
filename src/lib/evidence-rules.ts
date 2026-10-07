@@ -21,6 +21,8 @@ export function assertAttemptUnchanged(
     "attempt_id",
     "learner_id",
     "session_id",
+    "position",
+    "question_id",
     "question_version_id",
     "selected_option_ids",
     "confidence",

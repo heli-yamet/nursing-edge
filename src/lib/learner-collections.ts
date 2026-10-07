@@ -80,7 +80,7 @@ export async function reviewTransitions() {
   return (await getDb()).collection<ReviewTransition>("review_transitions");
 }
 
-async function attempts() {
+export async function attempts() {
   return (await getDb()).collection<Attempt>("attempts");
 }
 
