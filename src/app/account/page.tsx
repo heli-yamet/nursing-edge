@@ -21,8 +21,8 @@ export default async function AccountPage() {
     : null;
 
   return (
-    <LearnerShell current="account">
-      <h1 className="text-[28px] leading-tight font-semibold text-[#163A59] sm:text-[32px]">
+    <LearnerShell current="account" dashboard>
+      <h1 className="pt-8 text-[28px] leading-tight font-semibold text-[#163A59] sm:text-[32px]">
         Account
       </h1>
       <p className="mt-4 max-w-xl text-base leading-7 text-[#24313A]">

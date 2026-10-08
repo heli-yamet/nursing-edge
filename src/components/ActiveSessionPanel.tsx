@@ -11,7 +11,7 @@ const TYPE_LABELS: Record<Session["type"], string> = {
 export function ActiveSessionPanel({ session }: { session: Session }) {
   return (
     <section
-      className="mt-8 max-w-xl rounded-[10px] border border-[#D9E1E5] bg-white p-6"
+      className="mt-8 rounded-[10px] border border-[#D9E1E5] bg-white p-6"
       aria-labelledby="active-session-heading"
     >
       <h2

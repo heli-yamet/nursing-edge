@@ -12,8 +12,8 @@ export default async function ProgressPage() {
   await requireAuthorizedLearner();
 
   return (
-    <LearnerShell current="progress">
-      <h1 className="text-[28px] leading-tight font-semibold text-[#163A59] sm:text-[32px]">
+    <LearnerShell current="progress" dashboard>
+      <h1 className="pt-8 text-[28px] leading-tight font-semibold text-[#163A59] sm:text-[32px]">
         Progress
       </h1>
       <p className="mt-4 max-w-xl text-base leading-7 text-[#24313A]">

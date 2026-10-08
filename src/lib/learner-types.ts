@@ -22,6 +22,13 @@ export type ImportLineOutcome = "PASSED" | "FAILED" | "UNCHANGED";
 export type SessionType = "PRACTICE" | "REVIEW" | "CALIBRATION";
 export type SessionState = "ACTIVE" | "COMPLETED" | "ENDED";
 
+export type SessionDraft = {
+  position: number;
+  question_version_id: string;
+  selected_option_ids: string[];
+  confidence: Confidence | null;
+};
+
 export type ReviewStage = "REPAIR" | "CONFIRMATION";
 export type ReviewCycleState =
   | "ACTIVE"
@@ -154,6 +161,8 @@ export type Session = {
   assigned_versions: AssignedVersion[];
   created_at: Date;
   rule_set_version: string;
+  draft?: SessionDraft | null;
+  held_position?: number | null;
 };
 
 export type Attempt = {

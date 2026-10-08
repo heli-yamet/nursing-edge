@@ -7,6 +7,12 @@ import {
   type ScoredVersion,
 } from "@/lib/commit-answer";
 import {
+  releaseSessionHold,
+  saveSessionDraft,
+  type ReleaseHoldResult,
+  type SaveDraftResult,
+} from "@/lib/session-draft";
+import {
   attempts,
   questionVersions,
   questions,
@@ -17,6 +23,10 @@ import {
 import { learnerTopicName } from "@/lib/learner-topics";
 import type { ClientSession } from "mongodb";
 import { runInTransaction } from "@/lib/mongo";
+
+function teachingText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
 
 function duplicatePattern(error: unknown): Record<string, unknown> | null {
   if (typeof error !== "object" || error === null || !("code" in error)) {
@@ -110,6 +120,10 @@ export async function createMongoCommitStore(
             question_id: 1,
             format: 1,
             learner_core_rationale: 1,
+            "review_teaching.why_it_wins": 1,
+            "review_teaching.the_trap": 1,
+            "review_teaching.carry_it_forward": 1,
+            "review_teaching.concise_teaching_response": 1,
             correct_option_ids: 1,
             "options.option_id": 1,
             "options.displayed_option": 1,
@@ -137,6 +151,14 @@ export async function createMongoCommitStore(
         })),
         correct_option_ids: version.correct_option_ids,
         learner_core_rationale: version.learner_core_rationale,
+        deeper: {
+          why_it_wins: teachingText(version.review_teaching?.why_it_wins),
+          the_trap: teachingText(version.review_teaching?.the_trap),
+          carry_it_forward: teachingText(version.review_teaching?.carry_it_forward),
+          concise_teaching_response: teachingText(
+            version.review_teaching?.concise_teaching_response,
+          ),
+        },
       };
       return scored;
     },
@@ -180,6 +202,27 @@ export async function createMongoCommitStore(
       await transitionRows.insertOne({ ...transition }, transaction);
       return "inserted";
     },
+    async holdPosition(sessionId, position) {
+      await sessionRows.updateOne(
+        { session_id: sessionId },
+        { $set: { held_position: position }, $unset: { draft: "" } },
+        transaction,
+      );
+    },
+    async releaseHold(sessionId) {
+      await sessionRows.updateOne(
+        { session_id: sessionId },
+        { $unset: { held_position: "" } },
+        transaction,
+      );
+    },
+    async writeDraft(sessionId, draft) {
+      await sessionRows.updateOne(
+        { session_id: sessionId },
+        { $set: { draft }, $unset: { held_position: "" } },
+        transaction,
+      );
+    },
   };
 }
 
@@ -202,4 +245,26 @@ export async function readLearnerCommittedPosition(input: {
 }): Promise<CommittedReadResult> {
   const store = await createMongoCommitStore();
   return readCommittedPosition({ ...input, store });
+}
+
+export async function saveLearnerDraft(input: {
+  learnerId: string;
+  position: unknown;
+  questionVersionId: unknown;
+  selectedOptionIds: unknown;
+  confidence: unknown;
+}): Promise<SaveDraftResult> {
+  return runInTransaction(async (mongoSession) => {
+    const store = await createMongoCommitStore(mongoSession);
+    return saveSessionDraft({ ...input, store });
+  });
+}
+
+export async function releaseLearnerHold(input: {
+  learnerId: string;
+}): Promise<ReleaseHoldResult> {
+  return runInTransaction(async (mongoSession) => {
+    const store = await createMongoCommitStore(mongoSession);
+    return releaseSessionHold({ ...input, store });
+  });
 }

@@ -25,8 +25,9 @@ export default async function PracticeSessionPage() {
   }
 
   return (
-    <LearnerShell current="practice" wide>
-      {loaded.result === "open" ? (
+    <LearnerShell current="practice" dashboard>
+      <div className="pt-8">
+      {loaded.result === "open" || loaded.result === "feedback" ? (
         <OpenQuestion
           key={loaded.position}
           label={TYPE_LABELS[loaded.type]}
@@ -36,6 +37,22 @@ export default async function PracticeSessionPage() {
           stem={loaded.question.stem}
           format={loaded.question.format}
           options={loaded.question.options}
+          initialSelectedIds={
+            loaded.result === "feedback"
+              ? loaded.reveal.selection.map((option) => option.option_id)
+              : loaded.draft?.selected_option_ids
+          }
+          initialConfidence={
+            loaded.result === "feedback"
+              ? loaded.reveal.confidence === "Unsure"
+                ? "UNSURE"
+                : loaded.reveal.confidence === "Sure"
+                  ? "SURE"
+                  : "CONFIDENT"
+              : loaded.draft?.confidence
+          }
+          initialReveal={loaded.result === "feedback" ? loaded.reveal : null}
+          initialIsLast={loaded.result === "feedback" ? loaded.isLast : false}
         />
       ) : loaded.result === "unavailable" ? (
         <p className="text-base leading-7 text-[#24313A]" role="status">
@@ -59,6 +76,7 @@ export default async function PracticeSessionPage() {
           </Link>
         </div>
       )}
+      </div>
     </LearnerShell>
   );
 }

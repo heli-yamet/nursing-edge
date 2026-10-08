@@ -1,5 +1,10 @@
 import { newPermanentId } from "@/lib/ids";
-import type { FactualReveal, RevealOption } from "@/lib/factual-reveal";
+import {
+  EMPTY_DEEPER,
+  type DeeperExplanation,
+  type FactualReveal,
+  type RevealOption,
+} from "@/lib/factual-reveal";
 import type {
   Attempt,
   Confidence,
@@ -7,6 +12,7 @@ import type {
   ReviewCycle,
   ReviewTransition,
   Session,
+  SessionDraft,
 } from "@/lib/learner-types";
 import {
   isAllowedConfidence,
@@ -28,6 +34,7 @@ export type ScoredVersion = {
   options: ScoredOption[];
   correct_option_ids: string[];
   learner_core_rationale: string;
+  deeper?: DeeperExplanation;
 };
 
 export type CommitStore = {
@@ -44,6 +51,9 @@ export type CommitStore = {
     cycle: ReviewCycle,
     transition: ReviewTransition,
   ): Promise<"inserted" | "already_active">;
+  holdPosition(sessionId: string, position: number): Promise<void>;
+  releaseHold(sessionId: string): Promise<void>;
+  writeDraft(sessionId: string, draft: SessionDraft): Promise<void>;
 };
 
 export type CommitAnswerResult =
@@ -146,6 +156,7 @@ export function buildFactualReveal(
     confidence: CONFIDENCE_WORD[attempt.confidence],
     topic,
     learner_core_rationale: version.learner_core_rationale,
+    deeper: version.deeper ?? EMPTY_DEEPER,
   };
 }
 
@@ -212,6 +223,7 @@ export async function commitSessionAnswer(input: {
 
   const existing = await input.store.findAttempt(session.session_id, position);
   if (existing) {
+    await input.store.holdPosition(session.session_id, position);
     return finishStored(input.store, session, existing, "replay");
   }
 
@@ -290,6 +302,7 @@ export async function commitSessionAnswer(input: {
     if (!stored) {
       throw new Error("committed position could not be reread");
     }
+    await input.store.holdPosition(session.session_id, position);
     return finishStored(input.store, session, stored, "replay");
   }
 
@@ -324,6 +337,7 @@ export async function commitSessionAnswer(input: {
     });
   }
 
+  await input.store.holdPosition(session.session_id, position);
   return finishStored(input.store, session, attempt, "committed");
 }
 
@@ -463,6 +477,30 @@ export function createMemoryCommitStore(input: {
       cycles.push(structuredClone(cycle));
       transitions.push(structuredClone(transition));
       return "inserted";
+    },
+    async holdPosition(sessionId, position) {
+      const session = sessions.find((item) => item.session_id === sessionId);
+      if (!session) {
+        return;
+      }
+      session.held_position = position;
+      if (session.draft?.position === position) {
+        session.draft = null;
+      }
+    },
+    async releaseHold(sessionId) {
+      const session = sessions.find((item) => item.session_id === sessionId);
+      if (session) {
+        session.held_position = null;
+      }
+    },
+    async writeDraft(sessionId, draft) {
+      const session = sessions.find((item) => item.session_id === sessionId);
+      if (!session) {
+        return;
+      }
+      session.draft = structuredClone(draft);
+      session.held_position = null;
     },
   };
 }

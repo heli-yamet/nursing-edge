@@ -18,8 +18,8 @@ export default async function PracticePage() {
   const setup = active ? null : await loadPracticeSetup(learner.learner_id);
 
   return (
-    <LearnerShell current="practice">
-      <h1 className="text-[28px] leading-tight font-semibold text-[#163A59] sm:text-[32px]">
+    <LearnerShell current="practice" dashboard>
+      <h1 className="pt-8 text-[28px] leading-tight font-semibold text-[#163A59] sm:text-[32px]">
         Practice
       </h1>
       {active ? (

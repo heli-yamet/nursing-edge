@@ -10,19 +10,32 @@ const ITEMS = [
 
 export type LearnerNavItem = (typeof ITEMS)[number][0];
 
+export function learnerFrameClass(options: {
+  wide?: boolean;
+  dashboard?: boolean;
+}): string {
+  if (options.dashboard) {
+    return "max-w-[1120px]";
+  }
+  if (options.wide) {
+    return "max-w-[1024px]";
+  }
+  return "max-w-[760px]";
+}
+
 export function LearnerNav({
   current,
   wide = false,
+  dashboard = false,
 }: {
   current: LearnerNavItem;
   wide?: boolean;
+  dashboard?: boolean;
 }) {
   return (
     <header className="sticky top-0 z-10 border-b border-[#D9E1E5] bg-white">
       <div
-        className={`mx-auto flex w-full items-center justify-between gap-4 px-4 py-2 sm:px-6 ${
-          wide ? "max-w-[1024px]" : "max-w-[760px]"
-        }`}
+        className={`mx-auto flex w-full items-center justify-between gap-4 px-4 py-2 sm:px-6 ${learnerFrameClass({ wide, dashboard })}`}
       >
         <span className="hidden text-lg font-semibold text-[#163A59] sm:inline">
           Nursing Edge
