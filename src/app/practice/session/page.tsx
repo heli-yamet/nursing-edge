@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { EndSessionControl } from "@/components/EndSessionControl";
 import { LearnerShell } from "@/components/LearnerShell";
 import { OpenQuestion } from "@/components/OpenQuestion";
 import { requireAuthorizedLearner } from "@/lib/learner-gate";
@@ -55,14 +56,24 @@ export default async function PracticeSessionPage() {
           initialIsLast={loaded.result === "feedback" ? loaded.isLast : false}
         />
       ) : loaded.result === "unavailable" ? (
-        <p className="text-base leading-7 text-[#24313A]" role="status">
-          This question is temporarily unavailable. Your session progress is
-          saved.
-        </p>
+        <div>
+          <p className="text-base leading-7 text-[#24313A]" role="status">
+            This question is temporarily unavailable. Your session progress is
+            saved.
+          </p>
+          <div className="mt-6">
+            <EndSessionControl label="End Session" nextHref="/practice/ended" />
+          </div>
+        </div>
       ) : loaded.result === "none_open" ? (
-        <p className="text-base leading-7 text-[#24313A]" role="status">
-          Every question in this session already has a submitted answer.
-        </p>
+        <div>
+          <p className="text-base leading-7 text-[#24313A]" role="status">
+            Every question in this session already has a submitted answer.
+          </p>
+          <div className="mt-6">
+            <EndSessionControl label="End Session" nextHref="/practice/ended" />
+          </div>
+        </div>
       ) : (
         <div>
           <p className="text-base leading-7 text-[#24313A]">

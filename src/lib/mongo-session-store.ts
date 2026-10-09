@@ -1,6 +1,12 @@
 import type { BaselineStore } from "@/lib/calibration-session";
-import { calibrations, sessions } from "@/lib/learner-collections";
+import {
+  endCurrentSession,
+  type EndSessionResult,
+  type EndSessionStore,
+} from "@/lib/end-session";
+import { attempts, calibrations, sessions } from "@/lib/learner-collections";
 import { runInTransaction } from "@/lib/mongo";
+import type { ClientSession } from "mongodb";
 import type { SessionStore } from "@/lib/practice-session";
 
 function duplicateKey(error: unknown): Record<string, unknown> | null | false {
@@ -77,4 +83,72 @@ export async function createMongoBaselineStore(): Promise<BaselineStore> {
       }
     },
   };
+}
+
+async function createMongoEndStore(
+  mongoSession: ClientSession,
+): Promise<EndSessionStore> {
+  const sessionRows = await sessions();
+  const attemptRows = await attempts();
+  const calibrationRows = await calibrations();
+  const transaction = { session: mongoSession };
+  return {
+    async findActive(learnerId) {
+      return sessionRows.findOne(
+        { learner_id: learnerId, state: "ACTIVE" },
+        { projection: { _id: 0 }, ...transaction },
+      );
+    },
+    async attemptCount(sessionId) {
+      return attemptRows.countDocuments({ session_id: sessionId }, transaction);
+    },
+    async markEnded(sessionId, learnerId) {
+      const updated = await sessionRows.updateOne(
+        { session_id: sessionId, learner_id: learnerId, state: "ACTIVE" },
+        { $set: { state: "ENDED" }, $unset: { draft: "", held_position: "" } },
+        transaction,
+      );
+      return updated.matchedCount === 1;
+    },
+    async completeCalibration(learnerId, completedAt) {
+      await calibrationRows.updateOne(
+        { learner_id: learnerId, state: "STARTED" },
+        { $set: { state: "COMPLETED", completed_at: completedAt } },
+        transaction,
+      );
+    },
+  };
+}
+
+export async function endLearnerSession(
+  learnerId: string,
+): Promise<EndSessionResult> {
+  return runInTransaction(async (mongoSession) => {
+    const store = await createMongoEndStore(mongoSession);
+    return endCurrentSession({ learnerId, store });
+  });
+}
+
+export async function readLatestEndedSummary(learnerId: string): Promise<{
+  submitted: number;
+  size: number;
+} | null> {
+  const ended = await (await sessions()).findOne(
+    {
+      learner_id: learnerId,
+      state: "ENDED",
+      type: { $in: ["PRACTICE", "CALIBRATION"] },
+    },
+    {
+      projection: { _id: 0, session_id: 1, assigned_versions: 1 },
+      sort: { created_at: -1 },
+    },
+  );
+  if (!ended) {
+    return null;
+  }
+  const submitted = await (await attempts()).countDocuments({
+    session_id: ended.session_id,
+  });
+  return { submitted, size: ended.assigned_versions.length };
 }

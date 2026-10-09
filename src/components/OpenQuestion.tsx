@@ -11,6 +11,7 @@ import {
   isValidAnswer,
   sameAnswer,
 } from "@/lib/answer-selection";
+import { EndSessionControl } from "@/components/EndSessionControl";
 import { EMPTY_DEEPER, type FactualReveal } from "@/lib/factual-reveal";
 import type { Confidence, QuestionFormat } from "@/lib/learner-types";
 import type { PreCommitOption } from "@/lib/player-question";
@@ -510,19 +511,26 @@ export function OpenQuestion({
         </p>
       ) : null}
       <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Link
-          href="/home"
-          className={secondaryButtonClass}
-          onClick={(event) => {
-            if (reveal) {
-              return;
-            }
-            event.preventDefault();
-            void exitWithDraft();
-          }}
-        >
-          Save and Exit
-        </Link>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <EndSessionControl
+            label="End Session"
+            nextHref="/practice/ended"
+            disabled={pending || pendingNav}
+          />
+          <Link
+            href="/home"
+            className={secondaryButtonClass}
+            onClick={(event) => {
+              if (reveal) {
+                return;
+              }
+              event.preventDefault();
+              void exitWithDraft();
+            }}
+          >
+            Save and Exit
+          </Link>
+        </div>
         {reveal ? (
           <button
             type="button"

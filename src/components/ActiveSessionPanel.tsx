@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EndSessionControl } from "@/components/EndSessionControl";
 import type { Session } from "@/lib/learner-types";
 import { practiceScopeLabel } from "@/lib/practice-options";
 
@@ -28,13 +29,19 @@ export function ActiveSessionPanel({ session }: { session: Session }) {
         <dt className="font-medium text-[#163A59]">Questions</dt>
         <dd>{session.assigned_versions.length}</dd>
       </dl>
-      <div className="mt-6">
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <Link
           href="/practice/session"
-          className="inline-flex min-h-[48px] items-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C]"
+          className="inline-flex min-h-[48px] items-center justify-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C]"
         >
           Continue Session
         </Link>
+        {session.type === "PRACTICE" || session.type === "CALIBRATION" ? (
+          <EndSessionControl
+            label="End Session and Start New"
+            nextHref="/practice"
+          />
+        ) : null}
       </div>
     </section>
   );

@@ -81,11 +81,13 @@ export function HomeDashboard({
 
       <section
         aria-label="Home actions"
-        className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
+        className="grid grid-cols-1 gap-4 lg:grid-cols-12"
       >
         <Link
           href={practice.href}
-          className="group flex items-start gap-4 rounded-[20px] bg-gradient-to-br from-[#14959C] to-[#0A6A70] p-6 text-white shadow-[0_10px_28px_rgba(11,127,134,0.22)] transition hover:from-[#17A0A8] hover:to-[#0B747A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#163A59] md:col-span-2"
+          className={`group flex items-start gap-4 rounded-[20px] bg-gradient-to-br from-[#14959C] to-[#0A6A70] p-6 text-white shadow-[0_10px_28px_rgba(11,127,134,0.22)] transition hover:from-[#17A0A8] hover:to-[#0B747A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#163A59] ${
+            session ? "lg:col-span-5" : "lg:col-span-4"
+          }`}
         >
           <PlayMark />
           <span className="min-w-0 flex-1">
@@ -127,20 +129,26 @@ export function HomeDashboard({
           </span>
         </Link>
 
-        <QuietCard
-          href={HOME_ACTIONS.review.href}
-          eyebrow="Review"
-          title={HOME_ACTIONS.review.label}
-          body="Revisit missed questions and key concepts."
-          icon={<BookMark />}
-        />
-        <QuietCard
-          href={HOME_ACTIONS.progress.href}
-          eyebrow="Progress"
-          title={HOME_ACTIONS.progress.label}
-          body="See your improvement and stay on track."
-          icon={<SignalMark />}
-        />
+        <div
+          className={`grid h-full grid-cols-1 gap-4 lg:grid-cols-12 ${
+            session ? "lg:col-span-7" : "lg:col-span-8"
+          }`}
+        >
+          <QuietCard
+            href={HOME_ACTIONS.review.href}
+            eyebrow="Review"
+            title={HOME_ACTIONS.review.label}
+            body="Revisit missed questions and key concepts."
+            icon={<BookMark />}
+          />
+          <QuietCard
+            href={HOME_ACTIONS.progress.href}
+            eyebrow="Progress"
+            title={HOME_ACTIONS.progress.label}
+            body="See your improvement and stay on track."
+            icon={<SignalMark />}
+          />
+        </div>
       </section>
 
       <section className="mt-5 flex items-start gap-4 rounded-[20px] border border-[#D7EEEE] bg-[#F3FAFA] px-5 py-4 sm:items-center">
@@ -177,7 +185,7 @@ function QuietCard({
   return (
     <Link
       href={href}
-      className="flex flex-col rounded-[20px] border border-[#E3EAED] bg-white p-6 shadow-[0_8px_24px_rgba(22,58,89,0.04)] transition hover:border-[#C5DDDE] hover:shadow-[0_10px_28px_rgba(22,58,89,0.07)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B7F86]"
+      className="flex h-full flex-col rounded-[20px] border border-[#E3EAED] bg-white p-6 shadow-[0_8px_24px_rgba(22,58,89,0.04)] transition hover:border-[#C5DDDE] hover:shadow-[0_10px_28px_rgba(22,58,89,0.07)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B7F86] lg:col-span-6"
     >
       <span className="flex items-start justify-between">
         <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#E8F5F5] text-[#0B7F86]">
