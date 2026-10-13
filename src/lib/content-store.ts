@@ -17,6 +17,8 @@ export type ContentStore = {
   ): Promise<Map<string, QuestionVersion>>;
   upsertVersion(version: QuestionVersion): Promise<void>;
   upsertVersions(versions: QuestionVersion[]): Promise<void>;
+  deleteVersions(question_version_ids: string[]): Promise<void>;
+  deleteQuestions(question_ids: string[]): Promise<void>;
   versionHasAttempts(question_version_id: string): Promise<boolean>;
   versionsWithAttempts(question_version_ids: string[]): Promise<Set<string>>;
   insertBatch(batch: ImportBatch): Promise<void>;
@@ -87,6 +89,16 @@ export function createMemoryContentStore(): MemoryContentStore {
     async upsertVersions(items) {
       for (const version of items) {
         versions.set(version.question_version_id, version);
+      }
+    },
+    async deleteVersions(question_version_ids) {
+      for (const question_version_id of question_version_ids) {
+        versions.delete(question_version_id);
+      }
+    },
+    async deleteQuestions(question_ids) {
+      for (const question_id of question_ids) {
+        questions.delete(question_id);
       }
     },
     async versionHasAttempts(question_version_id) {

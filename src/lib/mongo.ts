@@ -1,4 +1,5 @@
 import { MongoClient, type ClientSession, type Db } from "mongodb";
+import { ensureRelationshipIndexes } from "@/lib/relationship-indexes";
 
 const uri = process.env.MONGODB_URI;
 
@@ -156,6 +157,11 @@ async function ensureIndexes(db: Db): Promise<void> {
   await db.collection("pause_audits").createIndex({ occurred_at: -1 });
 
   await db
+    .collection("delete_audits")
+    .createIndex({ audit_id: 1 }, { unique: true });
+  await db.collection("delete_audits").createIndex({ occurred_at: -1 });
+
+  await db
     .collection("calibration_blueprints")
     .createIndex({ blueprint_id: 1 }, { unique: true });
   await db.collection("calibration_blueprints").createIndex(
@@ -169,4 +175,6 @@ async function ensureIndexes(db: Db): Promise<void> {
   await db
     .collection("calibrations")
     .createIndex({ learner_id: 1 }, { unique: true });
+
+  await ensureRelationshipIndexes(db);
 }

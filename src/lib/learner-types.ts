@@ -236,6 +236,7 @@ export type ImportLine = {
 
 export type PublishLineOutcome = "PUBLISHED" | "REJECTED";
 export type PauseLineOutcome = "PAUSED" | "RESUMED" | "REJECTED";
+export type DeleteLineOutcome = "DELETED" | "REJECTED";
 
 export type PublishAudit = {
   audit_id: string;
@@ -252,6 +253,15 @@ export type PauseAudit = {
   occurred_at: Date;
   question_version_ids: string[];
   outcome: PauseLineOutcome;
+  reason: string | null;
+};
+
+export type DeleteAudit = {
+  audit_id: string;
+  actor_admin_id: string;
+  occurred_at: Date;
+  question_version_ids: string[];
+  outcome: DeleteLineOutcome;
   reason: string | null;
 };
 

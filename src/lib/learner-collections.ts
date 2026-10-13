@@ -8,6 +8,7 @@ import type {
   ImportLine,
   PublishAudit,
   PauseAudit,
+  DeleteAudit,
   Calibration,
   CalibrationBlueprint,
   Learner,
@@ -52,6 +53,10 @@ export async function publishAudits() {
 
 export async function pauseAudits() {
   return (await getDb()).collection<PauseAudit>("pause_audits");
+}
+
+export async function deleteAudits() {
+  return (await getDb()).collection<DeleteAudit>("delete_audits");
 }
 
 export async function calibrationBlueprints() {

@@ -83,6 +83,20 @@ export async function createMongoContentStore(): Promise<ContentStore> {
         { ordered: false },
       );
     },
+    async deleteVersions(question_version_ids) {
+      if (question_version_ids.length === 0) {
+        return;
+      }
+      await versions.deleteMany({
+        question_version_id: { $in: question_version_ids },
+      });
+    },
+    async deleteQuestions(question_ids) {
+      if (question_ids.length === 0) {
+        return;
+      }
+      await questions.deleteMany({ question_id: { $in: question_ids } });
+    },
     async versionHasAttempts(question_version_id) {
       const found = await attempts.findOne({ question_version_id });
       return found !== null;
