@@ -102,6 +102,8 @@ export async function POST(req: Request) {
       );
     }
 
+    console.log("downloaded", downloaded);
+
     const bytes = Buffer.from(await new Response(downloaded.stream).arrayBuffer());
     const inspected = inspectContentImportFile({
       fileName,
@@ -114,6 +116,9 @@ export async function POST(req: Request) {
         inspected.status,
       );
     }
+
+    console.log("bytes", bytes.length);
+    console.log("inspected", inspected);
 
     const store = await createMongoContentStore();
     const relationships = await createMongoRelationshipStore();
