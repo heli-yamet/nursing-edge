@@ -18,7 +18,7 @@ import { isContentImportBlob } from "@/lib/workbook-blob";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export function OPTIONS(req: Request) {
   return emptyAdminCors(req);
@@ -122,12 +122,14 @@ export async function POST(req: Request) {
 
     const store = await createMongoContentStore();
     const relationships = await createMongoRelationshipStore();
+    console.log("database connected");
     const result = await importC2Buffer(
       store,
       bytes,
       inspected.source,
       relationships,
     );
+    console.log("result", result);
     const purpose = payload.purpose === "calibration" ? "calibration" : "bank";
     let calibration: {
       ok: boolean;
