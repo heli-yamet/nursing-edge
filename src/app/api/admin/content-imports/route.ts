@@ -1,3 +1,4 @@
+import { del, get } from "@vercel/blob";
 import { emptyAdminCors, jsonWithAdminCors } from "@/lib/admin-http";
 import { requireActiveAdmin } from "@/lib/admin-request";
 import {
@@ -13,6 +14,7 @@ import {
 import { buildEligibilityReport } from "@/lib/eligibility-report";
 import { createMongoContentStore } from "@/lib/mongo-content-store";
 import { createMongoRelationshipStore } from "@/lib/relationship-store";
+import { isContentImportBlob } from "@/lib/workbook-blob";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,25 +68,43 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  let blobUrl = "";
   try {
     const auth = await requireActiveAdmin(req);
     if (!auth.ok) {
       return auth.response;
     }
 
-    const form = await req.formData();
-    const uploaded = form.get("file");
-    if (!(uploaded instanceof File)) {
+    const payload = (await req.json()) as {
+      url?: unknown;
+      pathname?: unknown;
+      fileName?: unknown;
+      purpose?: unknown;
+    };
+    const url = typeof payload.url === "string" ? payload.url : "";
+    const pathname = typeof payload.pathname === "string" ? payload.pathname : "";
+    const fileName = typeof payload.fileName === "string" ? payload.fileName : "";
+    if (!isContentImportBlob(url, pathname)) {
       return jsonWithAdminCors(
         req,
         { ok: false, error: "Choose a C2 .xlsx workbook" },
         400,
       );
     }
+    blobUrl = url;
 
-    const bytes = Buffer.from(await uploaded.arrayBuffer());
+    const downloaded = await get(url, { access: "private", useCache: false });
+    if (!downloaded || downloaded.statusCode !== 200) {
+      return jsonWithAdminCors(
+        req,
+        { ok: false, error: "Workbook upload was not found" },
+        400,
+      );
+    }
+
+    const bytes = Buffer.from(await new Response(downloaded.stream).arrayBuffer());
     const inspected = inspectContentImportFile({
-      fileName: uploaded.name,
+      fileName,
       byteLength: bytes.byteLength,
     });
     if (!inspected.ok) {
@@ -103,7 +123,7 @@ export async function POST(req: Request) {
       inspected.source,
       relationships,
     );
-    const purpose = String(form.get("purpose") ?? "bank");
+    const purpose = payload.purpose === "calibration" ? "calibration" : "bank";
     let calibration: {
       ok: boolean;
       reason: string | null;
@@ -130,5 +150,9 @@ export async function POST(req: Request) {
     const message = error instanceof Error ? error.message : "server_error";
     const status = /QUESTIONS sheet|valid \.xlsx/i.test(message) ? 400 : 500;
     return jsonWithAdminCors(req, { ok: false, error: message }, status);
+  } finally {
+    if (blobUrl) {
+      await del(blobUrl).catch(() => undefined);
+    }
   }
 }
