@@ -153,4 +153,65 @@ describe("C2 workbook parser", () => {
     expect(mid[0]?.options.length).toBeGreaterThan(0);
     expect(last[0]?.options.length).toBeGreaterThan(0);
   });
+
+  it("keeps a value in its own column when earlier cells are empty", async () => {
+    const JSZip = (await import("jszip")).default;
+    const zip = new JSZip();
+    zip.file(
+      "[Content_Types].xml",
+      `<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>`,
+    );
+    zip.file(
+      "_rels/.rels",
+      `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`,
+    );
+    zip.file(
+      "xl/workbook.xml",
+      `<?xml version="1.0" encoding="UTF-8"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="QUESTIONS" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`,
+    );
+    zip.file(
+      "xl/_rels/workbook.xml.rels",
+      `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>`,
+    );
+    zip.file(
+      "xl/worksheets/sheet1.xml",
+      `<?xml version="1.0" encoding="UTF-8"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1">
+      <c r="A1" t="str"><v>original_source_q</v></c>
+      <c r="B1" t="str"><v>workbook_row</v></c>
+      <c r="C1" t="str"><v>track</v></c>
+    </row>
+    <row r="2">
+      <c r="A2"/>
+      <c r="B2"/>
+      <c r="C2" t="str"><v>NCLEX</v></c>
+    </row>
+  </sheetData>
+</worksheet>`,
+    );
+    const buffer = Buffer.from(await zip.generateAsync({ type: "uint8array" }));
+    const { readXlsxSheetRows, sheetRowsByName } = await import("@/lib/xlsx-rows");
+    const sheets = await readXlsxSheetRows(buffer);
+    const row = sheetRowsByName(sheets, "QUESTIONS")?.[0];
+    expect(row?.original_source_q).toBe("");
+    expect(row?.workbook_row).toBe("");
+    expect(row?.track).toBe("NCLEX");
+  });
 });

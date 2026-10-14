@@ -114,7 +114,6 @@ export function validateImportQuestion(
     "primary_interview_prompt",
     "expected_reasoning_commitment",
     "concise_teaching_response",
-    "optional_second_prompt",
     "the_trap",
     "why_it_wins",
     "carry_it_forward",

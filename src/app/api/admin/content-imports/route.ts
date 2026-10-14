@@ -12,6 +12,7 @@ import {
 } from "@/lib/content-import";
 import { buildEligibilityReport } from "@/lib/eligibility-report";
 import { createMongoContentStore } from "@/lib/mongo-content-store";
+import { createMongoRelationshipStore } from "@/lib/relationship-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -95,7 +96,13 @@ export async function POST(req: Request) {
     }
 
     const store = await createMongoContentStore();
-    const result = await importC2Buffer(store, bytes, inspected.source);
+    const relationships = await createMongoRelationshipStore();
+    const result = await importC2Buffer(
+      store,
+      bytes,
+      inspected.source,
+      relationships,
+    );
     const purpose = String(form.get("purpose") ?? "bank");
     let calibration: {
       ok: boolean;
@@ -116,6 +123,7 @@ export async function POST(req: Request) {
       published: false,
       batch: result.batch,
       lines: result.lines,
+      domains: result.domains,
       calibration,
     });
   } catch (error) {

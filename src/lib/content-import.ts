@@ -1,8 +1,20 @@
 import type { ContentStore } from "@/lib/content-store";
-import { parseC2Workbook } from "@/lib/c2-parse";
+import { parseC2Sheets } from "@/lib/c2-parse";
+import {
+  emptyDomainCounts,
+  importWorkbookRelationships,
+  type DomainCounts,
+  type RelationshipDomains,
+} from "@/lib/relationship-import";
+import type { RelationshipStore } from "@/lib/relationship-store";
 import { stageImport, type StageImportResult } from "@/lib/stage-import";
+import { readXlsxSheetRows } from "@/lib/xlsx-rows";
 
 export const MAX_CONTENT_IMPORT_BYTES = 10 * 1024 * 1024;
+
+export type ContentImportResult = StageImportResult & {
+  domains: RelationshipDomains & { content: DomainCounts };
+};
 
 export type ContentImportFileCheck =
   | { ok: true; source: string }
@@ -43,7 +55,26 @@ export async function importC2Buffer(
   store: ContentStore,
   buffer: Buffer,
   source: string,
-): Promise<StageImportResult> {
-  const records = await parseC2Workbook(buffer);
-  return stageImport(store, { records, source });
+  relationships?: RelationshipStore | null,
+): Promise<ContentImportResult> {
+  const sheets = await readXlsxSheetRows(buffer);
+  const records = parseC2Sheets(sheets);
+  const staged = await stageImport(store, { records, source });
+  const relationshipDomains = await importWorkbookRelationships({
+    sheets,
+    source,
+    store: relationships ?? null,
+  });
+  return {
+    ...staged,
+    domains: {
+      content: {
+        ...emptyDomainCounts(),
+        passed: staged.batch.passed_count,
+        failed: staged.batch.failed_count,
+        unchanged: staged.batch.unchanged_count,
+      },
+      ...relationshipDomains,
+    },
+  };
 }

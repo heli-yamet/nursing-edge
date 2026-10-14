@@ -117,13 +117,18 @@ function parseSheetData(
   while (rowMatch) {
     rowIndex += 1;
     const cells = new Map<number, string>();
+    // Self-closing cells must be matched on their own. A slash-eating attribute
+    // pattern would fold the next valued cell into the empty one.
     const cellRe =
-      /<(?:[\w.]+:)?c\b([^>]*)(?:\/>|>([\s\S]*?)<\/(?:[\w.]+:)?c>)/g;
+      /<(?:[\w.]+:)?c\b([^>/]*)\/>|<(?:[\w.]+:)?c\b([^>]*)>([\s\S]*?)<\/(?:[\w.]+:)?c>/g;
     const rowXml = rowMatch[1] ?? "";
     let cellMatch = cellRe.exec(rowXml);
     while (cellMatch) {
-      const col = colNumber(attr(cellMatch[1] ?? "", "r"));
-      cells.set(col, cellValue(cellMatch[1] ?? "", cellMatch[2] ?? "", sharedStrings));
+      const selfClosing = cellMatch[1] !== undefined;
+      const attrs = selfClosing ? (cellMatch[1] ?? "") : (cellMatch[2] ?? "");
+      const inner = selfClosing ? "" : (cellMatch[3] ?? "");
+      const col = colNumber(attr(attrs, "r"));
+      cells.set(col, cellValue(attrs, inner, sharedStrings));
       cellMatch = cellRe.exec(rowXml);
     }
 

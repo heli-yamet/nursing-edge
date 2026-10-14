@@ -19,6 +19,11 @@ export async function buildC2WorkbookBuffer(input: {
   includeOptions?: boolean;
   includeRationales?: boolean;
   includeTeaching?: boolean;
+  extraSheets?: {
+    name: string;
+    headers: string[];
+    rows: Record<string, string | number | boolean>[];
+  }[];
 }): Promise<Buffer> {
   const includeOptions = input.includeOptions ?? true;
   const includeRationales = input.includeRationales ?? true;
@@ -136,6 +141,10 @@ export async function buildC2WorkbookBuffer(input: {
         ...question.review_teaching,
       })),
     );
+  }
+
+  for (const extra of input.extraSheets ?? []) {
+    addSheet(workbook, extra.name, extra.headers, extra.rows);
   }
 
   const buffer = await workbook.xlsx.writeBuffer();

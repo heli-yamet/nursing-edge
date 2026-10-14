@@ -53,10 +53,9 @@ function groupByVersion(rows: SheetRow[]): Map<string, SheetRow[]> {
   return grouped;
 }
 
-export async function parseC2Workbook(
-  buffer: Buffer,
-): Promise<ImportQuestionInput[]> {
-  const sheets = await readXlsxSheetRows(buffer);
+export function parseC2Sheets(
+  sheets: Map<string, SheetRow[]>,
+): ImportQuestionInput[] {
   const questions = sheetRowsByName(sheets, "QUESTIONS");
   if (!questions) {
     throw new Error("C2 workbook is missing the QUESTIONS sheet");
@@ -137,4 +136,10 @@ export async function parseC2Workbook(
         : emptyTeaching(),
     };
   });
+}
+
+export async function parseC2Workbook(
+  buffer: Buffer,
+): Promise<ImportQuestionInput[]> {
+  return parseC2Sheets(await readXlsxSheetRows(buffer));
 }

@@ -56,8 +56,57 @@ const SYSTEM_TO_TOPIC: Record<string, LearnerTopicId> = {
   PERIOP_DEVICES: "nursing-management-safety-professional-practice",
 };
 
+const LEARNER_TOPIC_KEYS = [
+  "NE-TOPIC-01",
+  "NE-TOPIC-02",
+  "NE-TOPIC-03",
+  "NE-TOPIC-04",
+  "NE-TOPIC-05",
+  "NE-TOPIC-06",
+  "NE-TOPIC-07",
+  "NE-TOPIC-08",
+] as const;
+
+export type LearnerTopicKey = (typeof LEARNER_TOPIC_KEYS)[number];
+
 export function learnerTopicName(topicId: string): string | null {
   return LEARNER_TOPICS.find((topic) => topic.topic_id === topicId)?.name ?? null;
+}
+
+export function learnerTopicForName(name: string): {
+  topic_id: LearnerTopicId;
+  topic_key: LearnerTopicKey;
+  name: string;
+} | null {
+  const index = LEARNER_TOPICS.findIndex((topic) => topic.name === name.trim());
+  if (index < 0) {
+    return null;
+  }
+  const topic = LEARNER_TOPICS[index];
+  const topic_key = LEARNER_TOPIC_KEYS[index];
+  if (!topic || !topic_key) {
+    return null;
+  }
+  return {
+    topic_id: topic.topic_id,
+    topic_key,
+    name: topic.name,
+  };
+}
+
+/** Fail a displayed topic_key that does not belong to the confirmed topic name. */
+export function topicKeyMismatch(
+  topicKey: string,
+  learnerTopicNameValue: string,
+): string | null {
+  const topic = learnerTopicForName(learnerTopicNameValue);
+  if (!topic) {
+    return `learner_topic_name does not match an existing topic: ${learnerTopicNameValue}`;
+  }
+  if (topic.topic_key !== topicKey.trim()) {
+    return `topic_key ${topicKey} does not match ${topic.name}`;
+  }
+  return null;
 }
 
 export function mapSourceSystem(system: string): LearnerTopicId | null {
