@@ -27,6 +27,35 @@ describe("Phase 2 content validator", () => {
     expect(isLearnerEligible(result.version)).toBe(false);
   });
 
+  it("resolves an unmapped physiology system from its topic binding", () => {
+    const result = validateImportQuestion({
+      ...selected1,
+      system: "MULTISYSTEM",
+      learner_topic_name: "Renal, Endocrine & Metabolic",
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.question.topic_id).toBe("renal-endocrine-metabolic");
+    expect(result.question.source_system).toBe("MULTISYSTEM");
+  });
+
+  it("rejects a topic binding that conflicts with a mapped source system", () => {
+    const result = validateImportQuestion({
+      ...selected1,
+      system: "CARDIO_PERFUSION",
+      learner_topic_name: "Respiratory & Ventilation",
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(
+      result.errors.some((error) => /conflicts with source system/i.test(error)),
+    ).toBe(true);
+  });
+
   it("rejects an unmapped source system instead of guessing", () => {
     const result = validateImportQuestion({
       ...selected1,

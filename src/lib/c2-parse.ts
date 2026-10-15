@@ -68,12 +68,16 @@ export function parseC2Sheets(
   const teaching = groupByVersion(
     sheetRowsByName(sheets, "REVIEW_TEACHING") ?? [],
   );
+  const topicBindings = groupByVersion(
+    sheetRowsByName(sheets, "TOPIC_BINDINGS") ?? [],
+  );
 
   return questions.map((question) => {
     const version = (question.question_version ?? "").trim();
     const optionRows = options.get(version) ?? [];
     const rationaleRow = (rationales.get(version) ?? [])[0];
     const teachingRow = (teaching.get(version) ?? [])[0];
+    const bindingRow = (topicBindings.get(version) ?? [])[0];
 
     const parsedOptions: AnswerOption[] = optionRows.map((option) => ({
       option_id: option.option_id ?? "",
@@ -115,6 +119,7 @@ export function parseC2Sheets(
               rationaleRow.clinical_source_anchors ?? "",
           }
         : emptyRationales(),
+      learner_topic_name: (bindingRow?.learner_topic_name ?? "").trim(),
       review_teaching: teachingRow
         ? {
             reasoning_target: teachingRow.reasoning_target ?? "",

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mapSourceSystem } from "@/lib/learner-topics";
+import { learnerTopicForName, mapSourceSystem } from "@/lib/learner-topics";
 import type {
   AnswerOption,
   Question,
@@ -27,6 +27,8 @@ export type ImportQuestionInput = {
   options: AnswerOption[];
   rationales: QuestionRationales;
   review_teaching: ReviewTeaching;
+  /** From TOPIC_BINDINGS when that sheet is present. Empty when it is not. */
+  learner_topic_name?: string;
 };
 
 export type ContentValidationSuccess = {
@@ -92,7 +94,20 @@ export function validateImportQuestion(
     errors.push("track must be CCRN or NCLEX");
   }
 
-  const topic_id = mapSourceSystem(input.system);
+  const fromSystem = mapSourceSystem(input.system);
+  const bindingName = input.learner_topic_name?.trim() ?? "";
+  const fromBinding = bindingName ? learnerTopicForName(bindingName) : null;
+  if (bindingName && !fromBinding) {
+    errors.push(
+      `learner_topic_name does not match an existing topic: ${bindingName}`,
+    );
+  }
+  if (fromSystem && fromBinding && fromSystem !== fromBinding.topic_id) {
+    errors.push(
+      `topic binding conflicts with source system: ${input.system}`,
+    );
+  }
+  const topic_id = fromSystem ?? fromBinding?.topic_id ?? null;
   if (!topic_id) {
     errors.push(`unmapped source system: ${input.system}`);
   }

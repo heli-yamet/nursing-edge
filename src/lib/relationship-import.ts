@@ -45,6 +45,24 @@ const MAPPING_SHEETS = [
 
 const TEACHING_SHEETS = ["PRECOMMIT_TEACHING", "EVIDENCE_BINDINGS"];
 
+const PHYSIOLOGY_SHEETS = [
+  "MECHANISMS",
+  "SUPPORT_LINKS",
+  "AP_VARIANT_GROUPS",
+];
+
+const AP_SUPPORT_STATUSES = new Set([
+  "REVIEWED_CANDIDATE_NOT_APPROVED",
+  "RETIRED_NOT_APPROVED",
+]);
+
+const AP_VARIANT_STATUSES = new Set([
+  "CANDIDATE",
+  "DRAFT",
+  "REVIEWED",
+  "RETIRED",
+]);
+
 type ReadyRow = {
   label: string;
   key: RelationshipKey;
@@ -321,7 +339,11 @@ export async function importWorkbookRelationships(input: {
     ) ||
     TEACHING_SHEETS.some(
       (name) => (sheetRowsByName(input.sheets, name)?.length ?? 0) > 0,
-    );
+    ) ||
+    (role === "AP_REINFORCEMENT" &&
+      PHYSIOLOGY_SHEETS.some(
+        (name) => (sheetRowsByName(input.sheets, name)?.length ?? 0) > 0,
+      ));
   if (!needsStore) {
     return domains;
   }
@@ -583,6 +605,10 @@ export async function importWorkbookRelationships(input: {
     });
   }
 
+  if (sourceBaseName(input.source) === AP_WORKBOOK) {
+    await importPhysiology(store, input.sheets, questions, mapping);
+  }
+
   await importSpecSheet(store, input.sheets, teaching, {
     sheet: "PRECOMMIT_TEACHING",
     collection: "precommit_teaching",
@@ -645,6 +671,253 @@ export async function importWorkbookRelationships(input: {
 
   await importRoles(store, questions, role, domains.runtime_binding);
   return domains;
+}
+
+async function importPhysiology(
+  store: RelationshipStore,
+  sheets: Map<string, SheetRow[]>,
+  questions: SheetRow[],
+  domain: DomainCounts,
+): Promise<void> {
+  await importSpecSheet(store, sheets, domain, {
+    sheet: "MECHANISMS",
+    collection: "mechanisms",
+    spec: [
+      ["mechanism_id", "id"],
+      ["mechanism_revision", "int"],
+      ["status", "id"],
+      ["label", "text"],
+      ["causal_model", "text"],
+      ["condition_boundary", "text"],
+      ["include_when", "text"],
+      ["exclude_when", "text"],
+      ["prerequisites_json", "text"],
+      ["source_refs_json", "text"],
+      ["approval_json", "nullish"],
+    ],
+    key: (doc) => ({
+      mechanism_id: textKey(doc, "mechanism_id"),
+      mechanism_revision: numberKey(doc, "mechanism_revision"),
+    }),
+  });
+
+  const apQuestions = new Map<string, string>();
+  for (const row of questions) {
+    const permanentId = (row.permanent_item_id ?? "").trim();
+    const version = (row.question_version ?? "").trim();
+    if (permanentId && version) {
+      apQuestions.set(permanentId, version);
+    }
+  }
+
+  await importSpecSheet(store, sheets, domain, {
+    sheet: "SUPPORT_LINKS",
+    collection: "support_links",
+    spec: [
+      ["support_link_id", "id"],
+      ["link_revision", "int"],
+      ["status", "id"],
+      ["relationship_type", "id"],
+      ["clinical_permanent_item_id", "id"],
+      ["clinical_question_version", "id"],
+      ["clinical_content_sha256", "text"],
+      ["clinical_fingerprint_contract", "text"],
+      ["clinical_map_id", "id"],
+      ["clinical_map_revision", "int"],
+      ["clinical_map_binding_status", "text"],
+      ["clinical_family_id", "id"],
+      ["clinical_family_revision", "int"],
+      ["clinical_primary_judgment_id", "id"],
+      ["ap_permanent_item_id", "id"],
+      ["ap_question_version", "id"],
+      ["ap_content_sha256", "text"],
+      ["mechanism_id", "id"],
+      ["mechanism_revision", "int"],
+      ["trigger_scope", "id"],
+      ["trigger_option_id", "nullish"],
+      ["trigger_event", "nullish"],
+      ["clinical_distinction", "text"],
+      ["ap_assessed_task", "text"],
+      ["feedback_bridge", "text"],
+      ["remaining_clinical_judgment", "text"],
+      ["prerequisite_compatibility", "text"],
+      ["track_scope_compatibility", "text"],
+      ["topic_scope_compatibility", "text"],
+      ["nonclone_justification", "text"],
+      ["pair_leakage_review", "text"],
+      ["exposure_dependency_json", "text"],
+      ["approval_json", "nullish"],
+      ["runtime_policy_id", "nullish"],
+    ],
+    key: (doc) => ({
+      support_link_id: textKey(doc, "support_link_id"),
+      link_revision: numberKey(doc, "link_revision"),
+    }),
+    check: (doc) => supportLinkError(store, doc, apQuestions),
+  });
+
+  await importApVariantGroups(store, sheets, apQuestions, domain);
+}
+
+async function supportLinkError(
+  store: RelationshipStore,
+  doc: Record<string, unknown>,
+  apQuestions: Map<string, string>,
+): Promise<string | null> {
+  const status = textKey(doc, "status");
+  if (!AP_SUPPORT_STATUSES.has(status)) {
+    return `invalid status ${status}`;
+  }
+  if (doc.approval_json !== null) {
+    return "approval_json must stay null";
+  }
+  const relationship = textKey(doc, "relationship_type");
+  if (relationship !== "AP_MECHANISM_SUPPORT") {
+    return `invalid relationship type ${relationship}`;
+  }
+  const trigger = textKey(doc, "trigger_scope");
+  if (trigger !== "ITEM") {
+    return `invalid trigger scope ${trigger}`;
+  }
+  const mechanismId = textKey(doc, "mechanism_id");
+  const mechanismRevision = numberKey(doc, "mechanism_revision");
+  if (
+    !(await exists(store, "mechanisms", {
+      mechanism_id: mechanismId,
+      mechanism_revision: mechanismRevision,
+    }))
+  ) {
+    return `missing mechanism ${mechanismId} revision ${mechanismRevision}`;
+  }
+  const apId = textKey(doc, "ap_permanent_item_id");
+  const apVersion = textKey(doc, "ap_question_version");
+  const expected = apQuestions.get(apId);
+  if (!expected) {
+    return `missing AP question ${apId}`;
+  }
+  if (expected !== apVersion) {
+    return `mismatched question version ${apVersion}`;
+  }
+  return null;
+}
+
+function variantMembers(
+  raw: string,
+): { ids: string[] } | { error: string } {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return {
+      error: "member_permanent_item_ids_json must be a nonempty array of AP permanent ids",
+    };
+  }
+  if (
+    !Array.isArray(parsed) ||
+    parsed.length === 0 ||
+    parsed.some((id) => typeof id !== "string" || !id.trim())
+  ) {
+    return {
+      error: "member_permanent_item_ids_json must be a nonempty array of AP permanent ids",
+    };
+  }
+  return { ids: parsed.map((id) => id.trim()) };
+}
+
+async function importApVariantGroups(
+  store: RelationshipStore,
+  sheets: Map<string, SheetRow[]>,
+  apQuestions: Map<string, string>,
+  domain: DomainCounts,
+): Promise<void> {
+  const rows = sheetRowsByName(sheets, "AP_VARIANT_GROUPS");
+  if (!rows) {
+    return;
+  }
+  const parsed: {
+    label: string;
+    key: RelationshipKey;
+    doc: Record<string, unknown>;
+    members: string[];
+    groupId: string;
+  }[] = [];
+
+  for (const [index, row] of rows.entries()) {
+    const read = readSpec(row, [
+      ["variant_group_id", "id"],
+      ["variant_group_revision", "int"],
+      ["status", "id"],
+      ["member_permanent_item_ids_json", "text"],
+      ["scope", "text"],
+      ["approval_json", "nullish"],
+    ]);
+    const fallback = `AP_VARIANT_GROUPS row ${index + 1}`;
+    if ("error" in read) {
+      fail(domain, fallback, read.error);
+      continue;
+    }
+    const status = textKey(read.doc, "status");
+    if (!AP_VARIANT_STATUSES.has(status)) {
+      fail(domain, fallback, `invalid status ${status}`);
+      continue;
+    }
+    const members = variantMembers(
+      textKey(read.doc, "member_permanent_item_ids_json"),
+    );
+    if ("error" in members) {
+      fail(domain, fallback, members.error);
+      continue;
+    }
+    const unknown = members.ids.find((id) => !apQuestions.has(id));
+    if (unknown) {
+      fail(domain, fallback, `unknown AP permanent id ${unknown}`);
+      continue;
+    }
+    const groupId = textKey(read.doc, "variant_group_id");
+    parsed.push({
+      label: `AP_VARIANT_GROUPS ${groupId} ${numberKey(read.doc, "variant_group_revision")}`,
+      key: {
+        variant_group_id: groupId,
+        variant_group_revision: numberKey(read.doc, "variant_group_revision"),
+      },
+      doc: read.doc,
+      members: members.ids,
+      groupId,
+    });
+  }
+
+  const owners = new Map<string, Set<string>>();
+  for (const row of parsed) {
+    for (const member of row.members) {
+      const groups = owners.get(member) ?? new Set<string>();
+      groups.add(row.groupId);
+      owners.set(member, groups);
+    }
+  }
+  const conflictingGroups = new Set<string>();
+  for (const row of parsed) {
+    const uniqueMembers = new Set(row.members);
+    if (uniqueMembers.size !== row.members.length) {
+      conflictingGroups.add(row.groupId);
+    }
+  }
+  for (const groups of owners.values()) {
+    if (groups.size > 1) {
+      for (const groupId of groups) {
+        conflictingGroups.add(groupId);
+      }
+    }
+  }
+
+  const ready: ReadyRow[] = [];
+  for (const row of parsed) {
+    if (conflictingGroups.has(row.groupId)) {
+      fail(domain, row.label, "conflicting variant membership");
+      continue;
+    }
+    ready.push({ label: row.label, key: row.key, doc: row.doc });
+  }
+  await commitRows(store, "ap_variant_groups", ready, domain);
 }
 
 async function mapReferenceError(
