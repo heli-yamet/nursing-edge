@@ -53,6 +53,11 @@ export const relationshipIndexes: RelationshipIndex[] = [
   lookup("evidence_bindings", { question_version: 1 }),
   unique("mechanisms", { mechanism_id: 1, mechanism_revision: 1 }),
   unique("support_links", { support_link_id: 1, link_revision: 1 }),
+  unique("link_decisions", {
+    link_kind: 1,
+    link_id: 1,
+    link_revision: 1,
+  }),
   lookup("support_links", { clinical_question_version: 1 }),
   lookup("support_links", { ap_question_version: 1 }),
   unique("ap_variant_groups", {

@@ -1,5 +1,9 @@
 import { isSupportedInteraction } from "@/lib/eligibility-report";
 import { isValidAnswer } from "@/lib/answer-selection";
+import {
+  isPracticeBarredRole,
+  practiceRoleForVersion,
+} from "@/lib/practice-role";
 import { attempts, questionVersions } from "@/lib/learner-collections";
 import type { Confidence, SessionDraft, SessionType } from "@/lib/learner-types";
 import { readLearnerCommittedPosition } from "@/lib/mongo-commit-store";
@@ -39,6 +43,22 @@ export type PlayerLoad =
       reveal: FactualReveal;
       isLast: boolean;
     };
+
+export function questionCanBeDisplayed(
+  version: {
+    stem?: string;
+    options?: unknown;
+    format: string;
+  } | null,
+  role: string | null | undefined,
+): boolean {
+  return Boolean(
+    version?.stem &&
+      version.options &&
+      isSupportedInteraction(version.format) &&
+      !isPracticeBarredRole(role),
+  );
+}
 
 const QUESTION_PROJECTION = {
   _id: 0,
@@ -89,11 +109,8 @@ export async function loadOpenPlayerQuestion(
     { question_version_id: open.question_version_id },
     { projection: QUESTION_PROJECTION },
   );
-  if (
-    !version?.stem ||
-    !version.options ||
-    !isSupportedInteraction(version.format)
-  ) {
+  const role = await practiceRoleForVersion(open.question_version_id);
+  if (!version || !questionCanBeDisplayed(version, role)) {
     return { result: "unavailable" };
   }
 
@@ -137,7 +154,9 @@ async function heldFeedback(
   type: Extract<SessionType, "PRACTICE" | "CALIBRATION">,
   size: number,
   assigned: { position: number; question_version_id: string }[],
-): Promise<Extract<PlayerLoad, { result: "feedback" }> | null> {
+): Promise<
+  Extract<PlayerLoad, { result: "feedback" | "unavailable" }> | null
+> {
   if (typeof heldPosition !== "number") {
     return null;
   }
@@ -158,6 +177,10 @@ async function heldFeedback(
     { question_version_id: assignment.question_version_id },
     { projection: QUESTION_PROJECTION },
   );
+  const role = await practiceRoleForVersion(assignment.question_version_id);
+  if (isPracticeBarredRole(role)) {
+    return { result: "unavailable" };
+  }
   if (
     !version?.stem ||
     !version.options ||

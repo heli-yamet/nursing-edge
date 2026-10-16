@@ -12,6 +12,7 @@ import {
   inspectContentImportFile,
 } from "@/lib/content-import";
 import { buildEligibilityReport } from "@/lib/eligibility-report";
+import { practiceBarredVersionIds } from "@/lib/practice-role";
 import { createMongoContentStore } from "@/lib/mongo-content-store";
 import { createMongoRelationshipStore } from "@/lib/relationship-store";
 import { isContentImportBlob } from "@/lib/workbook-blob";
@@ -38,13 +39,15 @@ export async function GET(req: Request) {
       return jsonWithAdminCors(req, { ok: true, lines });
     }
 
-    const [batches, imported, versions, reserved, blueprint] = await Promise.all([
-      store.listBatches(),
-      store.listImportedQuestions(),
-      store.listQuestionVersions(),
-      reservedCalibrationVersionIds(),
-      getActiveCalibrationBlueprint(),
-    ]);
+    const [batches, imported, versions, reserved, blueprint, practiceBarred] =
+      await Promise.all([
+        store.listBatches(),
+        store.listImportedQuestions(),
+        store.listQuestionVersions(),
+        reservedCalibrationVersionIds(),
+        getActiveCalibrationBlueprint(),
+        practiceBarredVersionIds(),
+      ]);
     return jsonWithAdminCors(req, {
       ok: true,
       batches: batches.slice().reverse(),
@@ -52,7 +55,7 @@ export async function GET(req: Request) {
         ...question,
         on_calibration_blueprint: reserved.has(question.question_version_id),
       })),
-      eligibility: buildEligibilityReport(versions, reserved),
+      eligibility: buildEligibilityReport(versions, reserved, practiceBarred),
       calibration: blueprint
         ? {
             name: blueprint.name,

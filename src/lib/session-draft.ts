@@ -120,7 +120,11 @@ export async function saveSessionDraft(input: {
   }
 
   const version = await input.store.loadVersion(assignment.question_version_id);
-  if (!version || version.question_id !== assignment.question_id) {
+  if (
+    !version ||
+    version.question_id !== assignment.question_id ||
+    version.practice_barred
+  ) {
     return { result: "unavailable" };
   }
   const optionIds = version.options.map((option) => option.option_id);

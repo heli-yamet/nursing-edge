@@ -28,6 +28,7 @@ import {
   type StartBaselineResult,
 } from "@/lib/calibration-session";
 import { readLearnerAccess } from "@/lib/learner-access";
+import { practiceBarredVersionIds } from "@/lib/practice-role";
 import {
   createMongoBaselineStore,
   createMongoSessionStore,
@@ -50,12 +51,13 @@ type PracticeContent = {
 };
 
 async function readPracticeContent(): Promise<PracticeContent> {
-  const [published, questionRows, blueprint] = await Promise.all([
+  const [published, questionRows, blueprint, practiceBarred] = await Promise.all([
     (await questionVersions())
       .find({ publication_status: "PUBLISHED" }, { projection: { _id: 0 } })
       .toArray(),
     (await questions()).find({}, { projection: { _id: 0 } }).toArray(),
     getActiveCalibrationBlueprint(),
+    practiceBarredVersionIds(),
   ]);
   const questionMap = new Map<string, Question>(
     questionRows.map((question) => [question.question_id, question]),
@@ -64,7 +66,12 @@ async function readPracticeContent(): Promise<PracticeContent> {
   return {
     published,
     blueprint,
-    candidates: practiceCandidates(published, questionMap, reserved),
+    candidates: practiceCandidates(
+      published,
+      questionMap,
+      reserved,
+      practiceBarred,
+    ),
   };
 }
 

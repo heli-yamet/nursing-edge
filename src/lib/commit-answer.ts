@@ -35,6 +35,8 @@ export type ScoredVersion = {
   correct_option_ids: string[];
   learner_core_rationale: string;
   deeper?: DeeperExplanation;
+  /** Set from the runtime role. Publication does not clear it. */
+  practice_barred?: boolean;
 };
 
 export type CommitStore = {
@@ -219,6 +221,13 @@ export async function commitSessionAnswer(input: {
   );
   if (!assignment) {
     return { result: "invalid_request" };
+  }
+
+  const assignedVersion = await input.store.loadVersion(
+    assignment.question_version_id,
+  );
+  if (assignedVersion?.practice_barred) {
+    return { result: "unavailable" };
   }
 
   const existing = await input.store.findAttempt(session.session_id, position);

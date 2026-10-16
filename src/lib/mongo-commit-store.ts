@@ -21,6 +21,8 @@ import {
   sessions,
 } from "@/lib/learner-collections";
 import { learnerTopicName } from "@/lib/learner-topics";
+import { isPracticeBarredRole } from "@/lib/practice-role";
+import { runtimeRoles } from "@/lib/relationship-collections";
 import type { ClientSession } from "mongodb";
 import { runInTransaction } from "@/lib/mongo";
 
@@ -140,6 +142,12 @@ export async function createMongoCommitStore(
       ) {
         return null;
       }
+      const role = await (
+        await runtimeRoles()
+      ).findOne(
+        { question_version_id: questionVersionId },
+        { projection: { _id: 0, role: 1 }, ...transaction },
+      );
       const scored: ScoredVersion = {
         question_version_id: version.question_version_id,
         question_id: version.question_id,
@@ -159,6 +167,7 @@ export async function createMongoCommitStore(
             version.review_teaching?.concise_teaching_response,
           ),
         },
+        practice_barred: isPracticeBarredRole(role?.role),
       };
       return scored;
     },

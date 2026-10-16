@@ -24,9 +24,14 @@ export function practiceCandidates(
   versions: QuestionVersion[],
   questions: Map<string, Question>,
   reservedIds: ReadonlySet<string> = new Set(),
+  practiceBarredIds: ReadonlySet<string> = new Set(),
 ): PracticeCandidate[] {
   const byQuestion = new Map<string, PracticeCandidate>();
-  for (const version of listEligibleVersions(versions, reservedIds)) {
+  for (const version of listEligibleVersions(
+    versions,
+    reservedIds,
+    practiceBarredIds,
+  )) {
     const question = questions.get(version.question_id);
     if (!question || question.status !== "ACTIVE") {
       continue;

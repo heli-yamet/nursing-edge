@@ -28,9 +28,11 @@ export function isReservedForCalibration(
 export function isMvpEligible(
   version: QuestionVersion,
   reservedIds: ReadonlySet<string> = new Set(),
+  practiceBarredIds: ReadonlySet<string> = new Set(),
 ): boolean {
   return (
     !isReservedForCalibration(version.question_version_id, reservedIds) &&
+    !practiceBarredIds.has(version.question_version_id) &&
     isLearnerEligible(version) &&
     isSupportedInteraction(version.format)
   );
@@ -39,13 +41,17 @@ export function isMvpEligible(
 export function listEligibleVersions(
   versions: QuestionVersion[],
   reservedIds: ReadonlySet<string> = new Set(),
+  practiceBarredIds: ReadonlySet<string> = new Set(),
 ): QuestionVersion[] {
-  return versions.filter((version) => isMvpEligible(version, reservedIds));
+  return versions.filter((version) =>
+    isMvpEligible(version, reservedIds, practiceBarredIds),
+  );
 }
 
 export function buildEligibilityReport(
   versions: QuestionVersion[],
   reservedIds: ReadonlySet<string> = new Set(),
+  practiceBarredIds: ReadonlySet<string> = new Set(),
 ): EligibilityReport {
   let published = 0;
   let unsupported_interaction = 0;
@@ -64,7 +70,11 @@ export function buildEligibilityReport(
   }
 
   const imported = versions.length;
-  const mvp_eligible = listEligibleVersions(versions, reservedIds).length;
+  const mvp_eligible = listEligibleVersions(
+    versions,
+    reservedIds,
+    practiceBarredIds,
+  ).length;
   return {
     imported,
     published,
