@@ -20,9 +20,10 @@ export type LinkedQuestionDetail = QuestionDetailView & {
   link_revision: number;
 };
 
-export type QuestionDetail = QuestionDetailView & {
-  confirmation: LinkedQuestionDetail[];
-  repair: LinkedQuestionDetail[];
+export type QuestionDetail = {
+  original: QuestionDetailView[];
+  clinical: LinkedQuestionDetail[];
+  physiology: LinkedQuestionDetail[];
 };
 
 type MapRef = {
@@ -122,13 +123,195 @@ export function assembleQuestionDetail(input: {
     });
   }
 
-  return { ...owner, confirmation, repair };
+  return {
+    original: [owner],
+    clinical: confirmation,
+    physiology: repair,
+  };
+}
+
+export function openedQuestionDetail(input: {
+  role: string | null;
+  opened: QuestionDetailView;
+  owners: QuestionDetail[];
+}): QuestionDetail {
+  if (
+    (input.role === "AP_REINFORCEMENT" ||
+      input.role === "CLINICAL_SIBLING_RESERVED") &&
+    input.owners.length > 0
+  ) {
+    return mergeDetails(input.owners);
+  }
+  if (input.role === "AP_REINFORCEMENT") {
+    return {
+      original: [],
+      clinical: [],
+      physiology: [{ ...input.opened, link_id: "", link_revision: 0 }],
+    };
+  }
+  if (input.role === "CLINICAL_SIBLING_RESERVED") {
+    return {
+      original: [],
+      clinical: [{ ...input.opened, link_id: "", link_revision: 0 }],
+      physiology: [],
+    };
+  }
+  return (
+    input.owners[0] ?? {
+      original: [input.opened],
+      clinical: [],
+      physiology: [],
+    }
+  );
+}
+
+function mergeDetails(parts: QuestionDetail[]): QuestionDetail {
+  const original: QuestionDetailView[] = [];
+  const seenOriginal = new Set<string>();
+  const clinical: LinkedQuestionDetail[] = [];
+  const seenClinical = new Set<string>();
+  const physiology: LinkedQuestionDetail[] = [];
+  const seenPhysiology = new Set<string>();
+  for (const part of parts) {
+    for (const item of part.original) {
+      if (seenOriginal.has(item.question_version_id)) {
+        continue;
+      }
+      seenOriginal.add(item.question_version_id);
+      original.push(item);
+    }
+    for (const item of part.clinical) {
+      const key = `${item.link_id}\0${item.link_revision}\0${item.question_version_id}`;
+      if (seenClinical.has(key)) {
+        continue;
+      }
+      seenClinical.add(key);
+      clinical.push(item);
+    }
+    for (const item of part.physiology) {
+      const key = `${item.link_id}\0${item.link_revision}\0${item.question_version_id}`;
+      if (seenPhysiology.has(key)) {
+        continue;
+      }
+      seenPhysiology.add(key);
+      physiology.push(item);
+    }
+  }
+  return { original, clinical, physiology };
 }
 
 export async function loadQuestionDetail(
   questionVersionId: string,
 ): Promise<QuestionDetail | null> {
   const db = await getDb();
+  const version = await db.collection<VersionDoc>("question_versions").findOne(
+    { question_version_id: questionVersionId },
+    {
+      projection: {
+        _id: 0,
+        question_version_id: 1,
+        question_id: 1,
+        format: 1,
+        stem: 1,
+        options: 1,
+        correct_option_ids: 1,
+      },
+    },
+  );
+  const opened = toView(version ?? undefined);
+  if (!opened) {
+    return null;
+  }
+  const roleDoc = await db.collection("runtime_roles").findOne(
+    { question_version_id: questionVersionId },
+    { projection: { _id: 0, role: 1 } },
+  );
+  const role = text(roleDoc?.role);
+  const ownerIds = await ownerVersionIds(db, questionVersionId, role);
+  const owners: QuestionDetail[] = [];
+  for (const ownerId of ownerIds) {
+    const detail = await loadOwnerDetail(db, ownerId);
+    if (detail) {
+      owners.push(detail);
+    }
+  }
+  return openedQuestionDetail({
+    role: role || null,
+    opened,
+    owners,
+  });
+}
+
+async function ownerVersionIds(
+  db: Awaited<ReturnType<typeof getDb>>,
+  questionVersionId: string,
+  role: string,
+): Promise<string[]> {
+  if (role === "AP_REINFORCEMENT") {
+    const links = await db
+      .collection<SupportRef>("support_links")
+      .find(
+        { ap_question_version: questionVersionId },
+        { projection: { _id: 0, clinical_question_version: 1 } },
+      )
+      .toArray();
+    return unique(
+      links.map((link) => link.clinical_question_version).filter(Boolean),
+    );
+  }
+  if (role === "CLINICAL_SIBLING_RESERVED") {
+    const maps = await db
+      .collection<MapRef>("maps")
+      .find(
+        { question_version: questionVersionId },
+        { projection: { _id: 0, map_id: 1, map_revision: 1 } },
+      )
+      .toArray();
+    if (maps.length === 0) {
+      return [];
+    }
+    const links = await db
+      .collection<TransferRef>("transfer_links")
+      .find(
+        {
+          $or: maps.map((map) => ({
+            candidate_map_id: map.map_id,
+            candidate_map_revision: map.map_revision,
+          })),
+        },
+        {
+          projection: {
+            _id: 0,
+            anchor_map_id: 1,
+            anchor_map_revision: 1,
+          },
+        },
+      )
+      .toArray();
+    if (links.length === 0) {
+      return [];
+    }
+    const anchors = await db
+      .collection<MapRef>("maps")
+      .find(
+        {
+          $or: links.map((link) => ({
+            map_id: link.anchor_map_id,
+            map_revision: link.anchor_map_revision,
+          })),
+        },
+        { projection: { _id: 0, question_version: 1 } },
+      )
+      .toArray();
+    return unique(anchors.map((map) => map.question_version).filter(Boolean));
+  }
+  return [questionVersionId];
+}
+
+async function loadOwnerDetail(
+  db: Awaited<ReturnType<typeof getDb>>,
+  questionVersionId: string,
+): Promise<QuestionDetail | null> {
   const version = await db.collection<VersionDoc>("question_versions").findOne(
     { question_version_id: questionVersionId },
     {
@@ -308,4 +491,8 @@ function toView(version: VersionDoc | undefined): QuestionDetailView | null {
 
 function text(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+function unique(values: string[]): string[] {
+  return values.filter((id, index, all) => all.indexOf(id) === index);
 }
