@@ -23,6 +23,8 @@ export type AdminLinkRow = {
   workbook_status: string;
   from_ref: string;
   to_ref: string;
+  from_question_version: string | null;
+  to_question_version: string | null;
   decision: "unapproved" | LinkDecisionState;
   admin_id: string | null;
   acted_at: string | null;
@@ -113,7 +115,7 @@ export async function applyLinkDecisions(
 
 export async function listAdminLinks(): Promise<AdminLinkRow[]> {
   const db = await getDb();
-  const [transfers, supports, decisions] = await Promise.all([
+  const [transfers, supports, decisions, maps] = await Promise.all([
     db
       .collection("transfer_links")
       .find(
@@ -125,7 +127,9 @@ export async function listAdminLinks(): Promise<AdminLinkRow[]> {
             link_revision: 1,
             status: 1,
             anchor_map_id: 1,
+            anchor_map_revision: 1,
             candidate_map_id: 1,
+            candidate_map_revision: 1,
           },
         },
       )
@@ -150,7 +154,36 @@ export async function listAdminLinks(): Promise<AdminLinkRow[]> {
       .collection<LinkDecision>("link_decisions")
       .find({}, { projection: { _id: 0 } })
       .toArray(),
+    db
+      .collection("maps")
+      .find(
+        {},
+        {
+          projection: {
+            _id: 0,
+            map_id: 1,
+            map_revision: 1,
+            question_version: 1,
+          },
+        },
+      )
+      .toArray(),
   ]);
+
+  const questionVersionByMap = new Map<string, string>();
+  for (const map of maps) {
+    if (
+      typeof map.map_id !== "string" ||
+      typeof map.map_revision !== "number" ||
+      typeof map.question_version !== "string"
+    ) {
+      continue;
+    }
+    questionVersionByMap.set(
+      mapKey(map.map_id, map.map_revision),
+      map.question_version,
+    );
+  }
 
   const decisionByKey = new Map<string, LinkDecision>();
   for (const decision of decisions) {
@@ -175,6 +208,12 @@ export async function listAdminLinks(): Promise<AdminLinkRow[]> {
         text(link.status),
         text(link.anchor_map_id),
         text(link.candidate_map_id),
+        questionVersionByMap.get(
+          mapKey(text(link.anchor_map_id), link.anchor_map_revision),
+        ) ?? "",
+        questionVersionByMap.get(
+          mapKey(text(link.candidate_map_id), link.candidate_map_revision),
+        ) ?? "",
         decisionByKey,
       ),
     );
@@ -194,6 +233,8 @@ export async function listAdminLinks(): Promise<AdminLinkRow[]> {
           link_revision: link.link_revision,
         },
         text(link.status),
+        text(link.clinical_question_version),
+        text(link.ap_question_version),
         text(link.clinical_question_version),
         text(link.ap_question_version),
         decisionByKey,
@@ -280,6 +321,10 @@ function decisionKey(target: LinkTarget): string {
   return `${target.link_kind}\0${target.link_id}\0${target.link_revision}`;
 }
 
+function mapKey(mapId: string, mapRevision: unknown): string {
+  return `${mapId}\0${typeof mapRevision === "number" ? mapRevision : ""}`;
+}
+
 function text(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
@@ -302,6 +347,8 @@ function toRow(
   workbookStatus: string,
   fromRef: string,
   toRef: string,
+  fromQuestionVersion: string,
+  toQuestionVersion: string,
   decisionByKey: Map<string, LinkDecision>,
 ): AdminLinkRow {
   const decision = decisionByKey.get(decisionKey(target));
@@ -310,6 +357,8 @@ function toRow(
     workbook_status: workbookStatus,
     from_ref: fromRef,
     to_ref: toRef,
+    from_question_version: fromQuestionVersion || null,
+    to_question_version: toQuestionVersion || null,
     decision: decision?.state ?? "unapproved",
     admin_id: decision?.admin_id ?? null,
     acted_at: decision ? toIso(decision.acted_at) : null,
