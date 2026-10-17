@@ -13,6 +13,7 @@ import {
 } from "@/lib/content-import";
 import { buildEligibilityReport } from "@/lib/eligibility-report";
 import { practiceBarredVersionIds } from "@/lib/practice-role";
+import { runtimeRoles } from "@/lib/relationship-collections";
 import { createMongoContentStore } from "@/lib/mongo-content-store";
 import { createMongoRelationshipStore } from "@/lib/relationship-store";
 import { isContentImportBlob } from "@/lib/workbook-blob";
@@ -39,7 +40,7 @@ export async function GET(req: Request) {
       return jsonWithAdminCors(req, { ok: true, lines });
     }
 
-    const [batches, imported, versions, reserved, blueprint, practiceBarred] =
+    const [batches, imported, versions, reserved, blueprint, practiceBarred, roles] =
       await Promise.all([
         store.listBatches(),
         store.listImportedQuestions(),
@@ -47,13 +48,23 @@ export async function GET(req: Request) {
         reservedCalibrationVersionIds(),
         getActiveCalibrationBlueprint(),
         practiceBarredVersionIds(),
+        (await runtimeRoles())
+          .find(
+            {},
+            { projection: { _id: 0, question_version_id: 1, role: 1 } },
+          )
+          .toArray(),
       ]);
+    const roleByVersion = new Map(
+      roles.map((role) => [role.question_version_id, role.role]),
+    );
     return jsonWithAdminCors(req, {
       ok: true,
       batches: batches.slice().reverse(),
       questions: imported.map((question) => ({
         ...question,
         on_calibration_blueprint: reserved.has(question.question_version_id),
+        role: roleByVersion.get(question.question_version_id) ?? null,
       })),
       eligibility: buildEligibilityReport(versions, reserved, practiceBarred),
       calibration: blueprint
