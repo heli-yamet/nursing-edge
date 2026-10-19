@@ -13,6 +13,7 @@ import {
 } from "@/lib/answer-selection";
 import { EndSessionControl } from "@/components/EndSessionControl";
 import { EMPTY_DEEPER, type FactualReveal } from "@/lib/factual-reveal";
+import { sixStateCopy } from "@/lib/six-state-copy";
 import type { Confidence, QuestionFormat } from "@/lib/learner-types";
 import type { PreCommitOption } from "@/lib/player-question";
 
@@ -81,6 +82,27 @@ function isReveal(value: unknown): value is FactualReveal {
   );
 }
 
+function InterpretationLines({
+  outcome,
+  confidence,
+}: {
+  outcome: FactualReveal["outcome"];
+  confidence: FactualReveal["confidence"];
+}) {
+  const copy = sixStateCopy(outcome, confidence);
+  if (!copy.available) {
+    return (
+      <p className="mt-4 text-base leading-7 text-[#24313A]">{copy.message}</p>
+    );
+  }
+  return (
+    <div className="mt-4 grid gap-2">
+      <p className="text-base leading-7 text-[#24313A]">{copy.immediate}</p>
+      <p className="text-base leading-7 text-[#24313A]">{copy.strengthening}</p>
+    </div>
+  );
+}
+
 function ResultCard({ reveal }: { reveal: FactualReveal }) {
   const [open, setOpen] = useState(false);
   const correct = reveal.outcome === "Correct";
@@ -132,6 +154,10 @@ function ResultCard({ reveal }: { reveal: FactualReveal }) {
             {reveal.confidence}
           </span>
         </p>
+        <InterpretationLines
+          outcome={reveal.outcome}
+          confidence={reveal.confidence}
+        />
       </div>
       <div className="border-t border-[#E6EEF0] px-5 py-5">
         <h3 className="text-base font-semibold text-[#163A59]">
