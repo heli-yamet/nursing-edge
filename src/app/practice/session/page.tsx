@@ -6,6 +6,7 @@ import { LearnerShell } from "@/components/LearnerShell";
 import { OpenQuestion } from "@/components/OpenQuestion";
 import { requireAuthorizedLearner } from "@/lib/learner-gate";
 import { loadOpenPlayerQuestion } from "@/lib/player-load";
+import { readActiveSession } from "@/lib/practice-setup";
 
 export const metadata: Metadata = {
   title: "Question",
@@ -20,9 +21,19 @@ const TYPE_LABELS = {
 
 export default async function PracticeSessionPage() {
   const learner = await requireAuthorizedLearner();
+  const active = await readActiveSession(learner.learner_id);
+  if (active?.type === "REVIEW") {
+    redirect("/review");
+  }
   const loaded = await loadOpenPlayerQuestion(learner.learner_id);
   if (loaded.result === "no_session") {
     redirect("/practice");
+  }
+  if (
+    (loaded.result === "open" || loaded.result === "feedback") &&
+    loaded.type === "REVIEW"
+  ) {
+    redirect("/review");
   }
 
   return (
@@ -31,7 +42,9 @@ export default async function PracticeSessionPage() {
       {loaded.result === "open" || loaded.result === "feedback" ? (
         <OpenQuestion
           key={loaded.position}
-          label={TYPE_LABELS[loaded.type]}
+          label={
+            loaded.type === "REVIEW" ? "Review" : TYPE_LABELS[loaded.type]
+          }
           position={loaded.position}
           size={loaded.size}
           questionVersionId={loaded.questionVersionId}

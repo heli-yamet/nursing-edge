@@ -1,8 +1,13 @@
 import { activeWindowExpiresAt } from "@/lib/clock";
-import type { Confidence, ReviewStage, SixState } from "@/lib/learner-types";
+import type {
+  Confidence,
+  ReviewCycleState,
+  ReviewStage,
+  SixState,
+} from "@/lib/learner-types";
 
-export const REPAIR_DELAY_MS = 24 * 60 * 60 * 1000;
-export const CONFIRMATION_DELAY_MS = 72 * 60 * 60 * 1000;
+export const REPAIR_DELAY_MS = 24 * 1000;
+export const CONFIRMATION_DELAY_MS = 72 * 1000;
 
 export type ReviewEntry = {
   stage: ReviewStage;
@@ -87,8 +92,24 @@ export function advanceReviewStage(
   };
 }
 
+export const REVIEW_CYCLE_COMPLETED = "completed";
+
 export function isReviewItemDue(now: Date, dueAt: Date, expiresAt: Date): boolean {
   return dueAt.getTime() <= now.getTime() && now.getTime() < expiresAt.getTime();
+}
+
+export function isDueReviewCycle(
+  cycle: {
+    state: ReviewCycleState;
+    due_at: Date;
+    active_window_expires_at: Date;
+  },
+  now: Date,
+): boolean {
+  return (
+    cycle.state === "ACTIVE" &&
+    isReviewItemDue(now, cycle.due_at, cycle.active_window_expires_at)
+  );
 }
 
 export function canOpenReviewCycle(activeExists: boolean): boolean {

@@ -7,6 +7,7 @@ import {
 import { attempts, calibrations, sessions } from "@/lib/learner-collections";
 import { runInTransaction } from "@/lib/mongo";
 import type { ClientSession } from "mongodb";
+import type { SessionType } from "@/lib/learner-types";
 import type { SessionStore } from "@/lib/practice-session";
 
 function duplicateKey(error: unknown): Record<string, unknown> | null | false {
@@ -129,7 +130,10 @@ export async function endLearnerSession(
   });
 }
 
-export async function readLatestEndedSummary(learnerId: string): Promise<{
+export async function readLatestEndedSummary(
+  learnerId: string,
+  types: SessionType[] = ["PRACTICE", "CALIBRATION"],
+): Promise<{
   submitted: number;
   size: number;
 } | null> {
@@ -137,7 +141,7 @@ export async function readLatestEndedSummary(learnerId: string): Promise<{
     {
       learner_id: learnerId,
       state: "ENDED",
-      type: { $in: ["PRACTICE", "CALIBRATION"] },
+      type: { $in: types },
     },
     {
       projection: { _id: 0, session_id: 1, assigned_versions: 1 },

@@ -16,7 +16,7 @@ export function EndSessionControl({
   disabled = false,
 }: {
   label: "End Session" | "End Session and Start New";
-  nextHref: "/practice/ended" | "/practice";
+  nextHref: "/practice/ended" | "/practice" | "/review/ended";
   disabled?: boolean;
 }) {
   const router = useRouter();

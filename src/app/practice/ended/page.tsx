@@ -16,6 +16,9 @@ export const dynamic = "force-dynamic";
 export default async function SessionEndedPage() {
   const learner = await requireAuthorizedLearner();
   const active = await readActiveSession(learner.learner_id);
+  if (active?.type === "REVIEW") {
+    redirect("/review");
+  }
   if (active) {
     redirect("/practice/session");
   }

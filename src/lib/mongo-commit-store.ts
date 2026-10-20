@@ -22,6 +22,7 @@ import {
 } from "@/lib/learner-collections";
 import { learnerTopicName } from "@/lib/learner-topics";
 import { isPracticeBarredRole } from "@/lib/practice-role";
+import { REVIEW_CYCLE_COMPLETED } from "@/lib/review-rules";
 import { runtimeRoles } from "@/lib/relationship-collections";
 import type { ClientSession } from "mongodb";
 import { runInTransaction } from "@/lib/mongo";
@@ -210,6 +211,31 @@ export async function createMongoCommitStore(
       }
       await transitionRows.insertOne({ ...transition }, transaction);
       return "inserted";
+    },
+    async advanceReviewCycle({ cycleId, advance, transition }) {
+      const updated = await cycleRows.updateOne(
+        { cycle_id: cycleId, state: "ACTIVE" },
+        advance.kind === "complete"
+          ? {
+              $set: {
+                state: "COMPLETE",
+                closure_reason: REVIEW_CYCLE_COMPLETED,
+              },
+            }
+          : {
+              $set: {
+                stage: advance.stage,
+                due_at: advance.due_at,
+                active_window_expires_at: advance.active_window_expires_at,
+              },
+            },
+        transaction,
+      );
+      if (updated.matchedCount !== 1) {
+        return "missing";
+      }
+      await transitionRows.insertOne({ ...transition }, transaction);
+      return "advanced";
     },
     async holdPosition(sessionId, position) {
       await sessionRows.updateOne(

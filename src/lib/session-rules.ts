@@ -21,6 +21,15 @@ export const HOME_ACTIONS: Record<
   progress: { href: "/progress", label: "Progress" },
 };
 
+export type PlayableSessionType = Extract<
+  SessionType,
+  "PRACTICE" | "CALIBRATION" | "REVIEW"
+>;
+
+export function sessionIsPlayable(type: SessionType): type is PlayableSessionType {
+  return type === "PRACTICE" || type === "CALIBRATION" || type === "REVIEW";
+}
+
 export function sessionCountsAsActive(state: SessionState | null): boolean {
   return state === "ACTIVE";
 }

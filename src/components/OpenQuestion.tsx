@@ -274,6 +274,7 @@ export function OpenQuestion({
   initialConfidence = null,
   initialReveal = null,
   initialIsLast = false,
+  endHref = "/practice/ended",
 }: {
   label: string;
   position: number;
@@ -286,6 +287,7 @@ export function OpenQuestion({
   initialConfidence?: Confidence | null;
   initialReveal?: FactualReveal | null;
   initialIsLast?: boolean;
+  endHref?: "/practice/ended" | "/review/ended";
 }) {
   const router = useRouter();
   const [pendingNav, startNav] = useTransition();
@@ -540,7 +542,7 @@ export function OpenQuestion({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <EndSessionControl
             label="End Session"
-            nextHref="/practice/ended"
+            nextHref={endHref}
             disabled={pending || pendingNav}
           />
           <Link

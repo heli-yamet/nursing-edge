@@ -1,4 +1,8 @@
-import type { Calibration, Session, SessionType } from "@/lib/learner-types";
+import type { Calibration, Session } from "@/lib/learner-types";
+import {
+  sessionIsPlayable,
+  type PlayableSessionType,
+} from "@/lib/session-rules";
 
 export const END_SESSION_CONFIRMATION =
   "End your current session? Your submitted answers will remain saved. Questions you have not submitted will not count as attempts.";
@@ -15,7 +19,7 @@ export type EndSessionResult =
       result: "ended";
       submitted: number;
       size: number;
-      type: Extract<SessionType, "PRACTICE" | "CALIBRATION">;
+      type: PlayableSessionType;
     }
   | { result: "no_session" }
   | { result: "not_playable" };
@@ -34,7 +38,7 @@ export async function endCurrentSession(input: {
   if (!session) {
     return { result: "no_session" };
   }
-  if (session.type !== "PRACTICE" && session.type !== "CALIBRATION") {
+  if (!sessionIsPlayable(session.type)) {
     return { result: "not_playable" };
   }
 

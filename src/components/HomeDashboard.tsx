@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { HOME_ACTIONS } from "@/lib/session-rules";
+import {
+  HOME_ACTIONS,
+  homeActionOrder,
+  type HomeActionId,
+} from "@/lib/session-rules";
 import type { SessionType } from "@/lib/learner-types";
 
 export type HomeSessionCard = {
@@ -26,23 +30,44 @@ function continueHref(type: SessionType): string {
 export function HomeDashboard({
   firstName,
   session,
+  reviewDue,
 }: {
   firstName: string;
   session: HomeSessionCard | null;
+  reviewDue: boolean;
 }) {
-  const practice = session
+  const order = homeActionOrder({
+    hasActiveSession: session !== null,
+    reviewDue,
+  });
+  const primary = order[0];
+  const continuing = primary === "continue-session" && session ? session : null;
+  const practice = continuing
     ? {
-        href: continueHref(session.type),
+        href: continueHref(continuing.type),
         label: HOME_ACTIONS["continue-session"].label,
       }
-    : {
-        href: HOME_ACTIONS["start-practice"].href,
-        label: "Start Session",
-      };
-  const completed = session
-    ? Math.min(session.submitted, session.size)
+    : primary === "review"
+      ? {
+          href: HOME_ACTIONS.review.href,
+          label: HOME_ACTIONS.review.label,
+        }
+      : {
+          href: HOME_ACTIONS["start-practice"].href,
+          label: "Start Session",
+        };
+  const eyebrow = continuing
+    ? continuing.type === "REVIEW"
+      ? "Review"
+      : "Practice"
+    : primary === "review"
+      ? "Review"
+      : "Practice";
+  const completed = continuing
+    ? Math.min(continuing.submitted, continuing.size)
     : 0;
-  const progress = session && session.size > 0 ? completed / session.size : 0;
+  const progress =
+    continuing && continuing.size > 0 ? completed / continuing.size : 0;
 
   return (
     <div>
@@ -89,28 +114,28 @@ export function HomeDashboard({
             session ? "lg:col-span-5" : "lg:col-span-4"
           }`}
         >
-          <PlayMark />
+          {primary === "review" && !continuing ? <ReviewMark /> : <PlayMark />}
           <span className="min-w-0 flex-1">
             <span className="block text-xs font-semibold tracking-[0.16em] text-white/80 uppercase">
-              Practice
+              {eyebrow}
             </span>
             <span className="mt-1 block text-xl font-semibold">
               {practice.label}
             </span>
-            {session ? (
+            {continuing ? (
               <>
                 <span className="mt-3 block text-sm leading-6 text-white/85">
-                  In-progress · {session.size}-question{" "}
-                  {SESSION_KIND[session.type]} session
+                  In-progress · {continuing.size}-question{" "}
+                  {SESSION_KIND[continuing.type]} session
                 </span>
                 <span className="mt-3 flex items-center gap-3">
                   <span
                     className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/25"
                     role="progressbar"
                     aria-valuemin={0}
-                    aria-valuemax={session.size}
+                    aria-valuemax={continuing.size}
                     aria-valuenow={completed}
-                    aria-label={`${completed} of ${session.size} questions submitted`}
+                    aria-label={`${completed} of ${continuing.size} questions submitted`}
                   >
                     <span
                       className="block h-full rounded-full bg-white"
@@ -118,7 +143,7 @@ export function HomeDashboard({
                     />
                   </span>
                   <span className="text-sm font-medium text-white/90">
-                    {completed} of {session.size}
+                    {completed} of {continuing.size}
                   </span>
                 </span>
               </>
@@ -134,20 +159,9 @@ export function HomeDashboard({
             session ? "lg:col-span-7" : "lg:col-span-8"
           }`}
         >
-          <QuietCard
-            href={HOME_ACTIONS.review.href}
-            eyebrow="Review"
-            title={HOME_ACTIONS.review.label}
-            body="Revisit missed questions and key concepts."
-            icon={<BookMark />}
-          />
-          <QuietCard
-            href={HOME_ACTIONS.progress.href}
-            eyebrow="Progress"
-            title={HOME_ACTIONS.progress.label}
-            body="See your improvement and stay on track."
-            icon={<SignalMark />}
-          />
+          {order.slice(1).map((id) => (
+            <QuietAction key={id} id={id} />
+          ))}
         </div>
       </section>
 
@@ -166,6 +180,40 @@ export function HomeDashboard({
         </span>
       </section>
     </div>
+  );
+}
+
+function QuietAction({ id }: { id: HomeActionId }) {
+  if (id === "review") {
+    return (
+      <QuietCard
+        href={HOME_ACTIONS.review.href}
+        eyebrow="Review"
+        title={HOME_ACTIONS.review.label}
+        body="Revisit missed questions and key concepts."
+        icon={<BookMark />}
+      />
+    );
+  }
+  if (id === "progress") {
+    return (
+      <QuietCard
+        href={HOME_ACTIONS.progress.href}
+        eyebrow="Progress"
+        title={HOME_ACTIONS.progress.label}
+        body="See your improvement and stay on track."
+        icon={<SignalMark />}
+      />
+    );
+  }
+  return (
+    <QuietCard
+      href={HOME_ACTIONS["start-practice"].href}
+      eyebrow="Practice"
+      title="Start Session"
+      body="Choose a topic and work through a set of questions."
+      icon={<SmallPlayMark />}
+    />
   );
 }
 
@@ -201,6 +249,22 @@ function QuietCard({
       </span>
       <span className="mt-2 block text-sm leading-6 text-[#5C6B74]">{body}</span>
     </Link>
+  );
+}
+
+function ReviewMark() {
+  return (
+    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2BB8BC] text-white">
+      <BookMark />
+    </span>
+  );
+}
+
+function SmallPlayMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+      <path d="M8 6.5v11l9-5.5-9-5.5Z" fill="currentColor" />
+    </svg>
   );
 }
 

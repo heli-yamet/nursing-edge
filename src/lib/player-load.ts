@@ -5,7 +5,11 @@ import {
   practiceRoleForVersion,
 } from "@/lib/practice-role";
 import { attempts, questionVersions } from "@/lib/learner-collections";
-import type { Confidence, SessionDraft, SessionType } from "@/lib/learner-types";
+import type { Confidence, SessionDraft } from "@/lib/learner-types";
+import {
+  sessionIsPlayable,
+  type PlayableSessionType,
+} from "@/lib/session-rules";
 import { readLearnerCommittedPosition } from "@/lib/mongo-commit-store";
 import type { FactualReveal } from "@/lib/factual-reveal";
 import {
@@ -26,7 +30,7 @@ export type PlayerLoad =
   | { result: "none_open"; size: number }
   | {
       result: "open";
-      type: Extract<SessionType, "PRACTICE" | "CALIBRATION">;
+      type: PlayableSessionType;
       size: number;
       position: number;
       questionVersionId: string;
@@ -35,7 +39,7 @@ export type PlayerLoad =
     }
   | {
       result: "feedback";
-      type: Extract<SessionType, "PRACTICE" | "CALIBRATION">;
+      type: PlayableSessionType;
       size: number;
       position: number;
       questionVersionId: string;
@@ -76,7 +80,7 @@ export async function loadOpenPlayerQuestion(
   if (!session) {
     return { result: "no_session" };
   }
-  if (session.type !== "PRACTICE" && session.type !== "CALIBRATION") {
+  if (!sessionIsPlayable(session.type)) {
     return { result: "not_playable" };
   }
 
@@ -151,7 +155,7 @@ function restoredDraft(
 async function heldFeedback(
   learnerId: string,
   heldPosition: number | null | undefined,
-  type: Extract<SessionType, "PRACTICE" | "CALIBRATION">,
+  type: PlayableSessionType,
   size: number,
   assigned: { position: number; question_version_id: string }[],
 ): Promise<

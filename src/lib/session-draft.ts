@@ -6,6 +6,7 @@ import {
 import type { FactualReveal } from "@/lib/factual-reveal";
 import type { Confidence, SessionDraft } from "@/lib/learner-types";
 import { isAllowedConfidence } from "@/lib/review-rules";
+import { sessionIsPlayable } from "@/lib/session-rules";
 
 export type SaveDraftResult =
   | { result: "saved"; draft: SessionDraft }
@@ -80,7 +81,7 @@ export async function saveSessionDraft(input: {
   if (!session) {
     return { result: "no_session" };
   }
-  if (session.type !== "PRACTICE" && session.type !== "CALIBRATION") {
+  if (!sessionIsPlayable(session.type)) {
     return { result: "not_playable" };
   }
 

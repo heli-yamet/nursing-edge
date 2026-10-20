@@ -6,7 +6,7 @@ export const systemClock: Clock = {
   now: () => new Date(),
 };
 
-export const REVIEW_ACTIVE_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+export const REVIEW_ACTIVE_WINDOW_MS = 14 * 60 * 1000;
 
 export function createFakeClock(start: Date) {
   let current = new Date(start.getTime());

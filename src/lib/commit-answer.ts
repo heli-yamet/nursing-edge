@@ -15,11 +15,14 @@ import type {
   SessionDraft,
 } from "@/lib/learner-types";
 import {
+  advanceReviewStage,
   isAllowedConfidence,
+  REVIEW_CYCLE_COMPLETED,
   reviewEntryForCommit,
   sixStateOf,
+  type ReviewAdvance,
 } from "@/lib/review-rules";
-import { stampRuleSetForCommit } from "@/lib/session-rules";
+import { sessionIsPlayable, stampRuleSetForCommit } from "@/lib/session-rules";
 
 export type ScoredOption = {
   option_id: string;
@@ -53,6 +56,11 @@ export type CommitStore = {
     cycle: ReviewCycle,
     transition: ReviewTransition,
   ): Promise<"inserted" | "already_active">;
+  advanceReviewCycle(input: {
+    cycleId: string;
+    advance: ReviewAdvance;
+    transition: ReviewTransition;
+  }): Promise<"advanced" | "missing">;
   holdPosition(sessionId: string, position: number): Promise<void>;
   releaseHold(sessionId: string): Promise<void>;
   writeDraft(sessionId: string, draft: SessionDraft): Promise<void>;
@@ -163,7 +171,7 @@ export function buildFactualReveal(
 }
 
 function playable(session: Session): boolean {
-  return session.type === "PRACTICE" || session.type === "CALIBRATION";
+  return sessionIsPlayable(session.type);
 }
 
 async function sessionIsComplete(
@@ -277,6 +285,14 @@ export async function commitSessionAnswer(input: {
     return { result: "invalid_request" };
   }
 
+  const reviewCycle =
+    session.type === "REVIEW"
+      ? await input.store.findActiveCycle(input.learnerId, assignment.question_id)
+      : null;
+  if (session.type === "REVIEW" && !reviewCycle) {
+    return { result: "unavailable" };
+  }
+
   const stamped = stampRuleSetForCommit(session);
   if (session.rule_set_version !== stamped.version) {
     await input.store.stampRuleSet(session.session_id, stamped.version);
@@ -315,11 +331,38 @@ export async function commitSessionAnswer(input: {
     return finishStored(input.store, session, stored, "replay");
   }
 
-  const entry = reviewEntryForCommit(
-    attempt.correct,
-    attempt.confidence,
-    attempt.committed_at,
-  );
+  if (reviewCycle) {
+    const advance = advanceReviewStage(
+      reviewCycle.stage,
+      attempt.correct,
+      attempt.confidence,
+      attempt.committed_at,
+    );
+    const applied = await input.store.advanceReviewCycle({
+      cycleId: reviewCycle.cycle_id,
+      advance,
+      transition: {
+        transition_id: newId(),
+        cycle_id: reviewCycle.cycle_id,
+        attempt_id: attempt.attempt_id,
+        from_stage: reviewCycle.stage,
+        to_stage: advance.kind === "complete" ? null : advance.stage,
+        occurred_at: attempt.committed_at,
+        reason: "advance",
+      },
+    });
+    if (applied !== "advanced") {
+      throw new Error("active review cycle could not be advanced");
+    }
+  }
+
+  const entry = reviewCycle
+    ? null
+    : reviewEntryForCommit(
+        attempt.correct,
+        attempt.confidence,
+        attempt.committed_at,
+      );
   if (entry && !(await input.store.findActiveCycle(input.learnerId, assignment.question_id))) {
     const cycle: ReviewCycle = {
       cycle_id: newId(),
@@ -486,6 +529,24 @@ export function createMemoryCommitStore(input: {
       cycles.push(structuredClone(cycle));
       transitions.push(structuredClone(transition));
       return "inserted";
+    },
+    async advanceReviewCycle({ cycleId, advance, transition }) {
+      const cycle = cycles.find(
+        (row) => row.cycle_id === cycleId && row.state === "ACTIVE",
+      );
+      if (!cycle) {
+        return "missing";
+      }
+      if (advance.kind === "complete") {
+        cycle.state = "COMPLETE";
+        cycle.closure_reason = REVIEW_CYCLE_COMPLETED;
+      } else {
+        cycle.stage = advance.stage;
+        cycle.due_at = advance.due_at;
+        cycle.active_window_expires_at = advance.active_window_expires_at;
+      }
+      transitions.push(structuredClone(transition));
+      return "advanced";
     },
     async holdPosition(sessionId, position) {
       const session = sessions.find((item) => item.session_id === sessionId);

@@ -156,7 +156,7 @@ export type Session = {
   learner_id: string;
   type: SessionType;
   scope: string;
-  size: 10 | 25 | 50 | 35;
+  size: number;
   state: SessionState;
   assigned_versions: AssignedVersion[];
   created_at: Date;

@@ -25,23 +25,29 @@ export function ActiveSessionPanel({ session }: { session: Session }) {
         <dt className="font-medium text-[#163A59]">Type</dt>
         <dd>{TYPE_LABELS[session.type]}</dd>
         <dt className="font-medium text-[#163A59]">Scope</dt>
-        <dd>{practiceScopeLabel(session.scope)}</dd>
+        <dd>
+          {session.type === "REVIEW"
+            ? "Due questions"
+            : practiceScopeLabel(session.scope)}
+        </dd>
         <dt className="font-medium text-[#163A59]">Questions</dt>
         <dd>{session.assigned_versions.length}</dd>
       </dl>
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <Link
-          href="/practice/session"
+          href={session.type === "REVIEW" ? "/review" : "/practice/session"}
           className="inline-flex min-h-[48px] items-center justify-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C]"
         >
           Continue Session
         </Link>
-        {session.type === "PRACTICE" || session.type === "CALIBRATION" ? (
+        {session.type === "REVIEW" ? (
+          <EndSessionControl label="End Session" nextHref="/review/ended" />
+        ) : (
           <EndSessionControl
             label="End Session and Start New"
             nextHref="/practice"
           />
-        ) : null}
+        )}
       </div>
     </section>
   );

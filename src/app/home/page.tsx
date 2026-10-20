@@ -4,6 +4,7 @@ import { LearnerShell } from "@/components/LearnerShell";
 import { requireAuthorizedLearner } from "@/lib/learner-gate";
 import { attempts } from "@/lib/learner-collections";
 import { readActiveSession } from "@/lib/practice-setup";
+import { learnerHasDueReview } from "@/lib/review-setup";
 
 export const metadata: Metadata = {
   title: "Home",
@@ -13,7 +14,10 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const learner = await requireAuthorizedLearner();
-  const active = await readActiveSession(learner.learner_id);
+  const [active, reviewDue] = await Promise.all([
+    readActiveSession(learner.learner_id),
+    learnerHasDueReview(learner.learner_id),
+  ]);
   const submitted = active
     ? await (
         await attempts()
@@ -35,6 +39,7 @@ export default async function HomePage() {
             ? { type: active.type, size, submitted }
             : null
         }
+        reviewDue={reviewDue}
       />
     </LearnerShell>
   );
