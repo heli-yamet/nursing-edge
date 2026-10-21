@@ -22,7 +22,10 @@ import {
 } from "@/lib/learner-collections";
 import { learnerTopicName } from "@/lib/learner-topics";
 import { isPracticeBarredRole } from "@/lib/practice-role";
-import { REVIEW_CYCLE_COMPLETED } from "@/lib/review-rules";
+import {
+  pauseFieldsAfterAdvance,
+  REVIEW_CYCLE_COMPLETED,
+} from "@/lib/review-rules";
 import { runtimeRoles } from "@/lib/relationship-collections";
 import type { ClientSession } from "mongodb";
 import { runInTransaction } from "@/lib/mongo";
@@ -109,7 +112,11 @@ export async function createMongoCommitStore(
     },
     async findActiveCycle(learnerId, questionId) {
       return cycleRows.findOne(
-        { learner_id: learnerId, question_id: questionId, state: "ACTIVE" },
+        {
+          learner_id: learnerId,
+          question_id: questionId,
+          state: { $in: ["ACTIVE", "PAUSED"] },
+        },
         { projection: { _id: 0 }, ...transaction },
       );
     },
@@ -213,20 +220,37 @@ export async function createMongoCommitStore(
       return "inserted";
     },
     async advanceReviewCycle({ cycleId, advance, transition }) {
+      const cycle = await cycleRows.findOne(
+        { cycle_id: cycleId, state: { $in: ["ACTIVE", "PAUSED"] } },
+        { projection: { _id: 0 }, ...transaction },
+      );
+      if (!cycle) {
+        return "missing";
+      }
+      const pause = pauseFieldsAfterAdvance(
+        cycle,
+        transition.occurred_at,
+        advance.kind === "complete" ? "complete" : "continue",
+      );
       const updated = await cycleRows.updateOne(
-        { cycle_id: cycleId, state: "ACTIVE" },
+        { cycle_id: cycleId, state: { $in: ["ACTIVE", "PAUSED"] } },
         advance.kind === "complete"
           ? {
               $set: {
-                state: "COMPLETE",
+                state: pause.state,
                 closure_reason: REVIEW_CYCLE_COMPLETED,
+                paused_at: pause.paused_at,
+                paused_duration_ms: pause.paused_duration_ms,
               },
             }
           : {
               $set: {
+                state: pause.state,
                 stage: advance.stage,
                 due_at: advance.due_at,
                 active_window_expires_at: advance.active_window_expires_at,
+                paused_at: pause.paused_at,
+                paused_duration_ms: pause.paused_duration_ms,
               },
             },
         transaction,

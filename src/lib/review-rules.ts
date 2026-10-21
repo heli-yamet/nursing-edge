@@ -23,6 +23,21 @@ export function isAllowedConfidence(value: string): value is Confidence {
   return value === "UNSURE" || value === "SURE" || value === "CONFIDENT";
 }
 
+export function isSixState(value: unknown): value is SixState {
+  return (
+    value === "CORRECT_UNSURE" ||
+    value === "CORRECT_SURE" ||
+    value === "CORRECT_CONFIDENT" ||
+    value === "INCORRECT_UNSURE" ||
+    value === "INCORRECT_SURE" ||
+    value === "INCORRECT_CONFIDENT"
+  );
+}
+
+export function isReviewStage(value: unknown): value is ReviewStage {
+  return value === "REPAIR" || value === "CONFIRMATION";
+}
+
 export function reviewSuccess(correct: boolean, confidence: Confidence): boolean {
   return correct && (confidence === "SURE" || confidence === "CONFIDENT");
 }
@@ -115,3 +130,94 @@ export function isDueReviewCycle(
 export function canOpenReviewCycle(activeExists: boolean): boolean {
   return !activeExists;
 }
+
+export function cycleHoldsQuestion(state: ReviewCycleState): boolean {
+  return state === "ACTIVE" || state === "PAUSED";
+}
+
+export function pauseReviewCycle<T extends ReviewCycleClock>(
+  cycle: T,
+  pausedAt: Date,
+): T {
+  if (cycle.state !== "ACTIVE") {
+    return cycle;
+  }
+  return {
+    ...cycle,
+    state: "PAUSED",
+    paused_at: pausedAt,
+  };
+}
+
+export function resumeReviewCycle<T extends ReviewCycleClock>(
+  cycle: T,
+  resumedAt: Date,
+): T {
+  if (cycle.state !== "PAUSED") {
+    return cycle;
+  }
+  const started = cycle.paused_at?.getTime() ?? resumedAt.getTime();
+  const duration = Math.max(0, resumedAt.getTime() - started);
+  return {
+    ...cycle,
+    state: "ACTIVE",
+    paused_at: null,
+    paused_duration_ms: cycle.paused_duration_ms + duration,
+    active_window_expires_at: new Date(
+      cycle.active_window_expires_at.getTime() + duration,
+    ),
+  };
+}
+
+export function reviewCycleAfterContentAvailability<T extends ReviewCycleClock>(
+  cycle: T,
+  servable: boolean,
+  now: Date,
+): T | null {
+  if (cycle.state === "ACTIVE" && !servable) {
+    return pauseReviewCycle(cycle, now);
+  }
+  if (cycle.state === "PAUSED" && servable) {
+    return resumeReviewCycle(cycle, now);
+  }
+  return null;
+}
+
+export function pauseFieldsAfterAdvance(
+  cycle: Pick<ReviewCycleClock, "state" | "paused_at" | "paused_duration_ms">,
+  occurredAt: Date,
+  kind: "complete" | "continue",
+): {
+  state: "ACTIVE" | "PAUSED" | "COMPLETE";
+  paused_at: Date | null;
+  paused_duration_ms: number;
+} {
+  const started =
+    cycle.state === "PAUSED"
+      ? (cycle.paused_at?.getTime() ?? occurredAt.getTime())
+      : null;
+  const duration =
+    started === null ? 0 : Math.max(0, occurredAt.getTime() - started);
+  const paused_duration_ms = cycle.paused_duration_ms + duration;
+  if (kind === "continue" && cycle.state === "PAUSED") {
+    return {
+      state: "PAUSED",
+      paused_at: occurredAt,
+      paused_duration_ms,
+    };
+  }
+  return {
+    state: kind === "complete" ? "COMPLETE" : "ACTIVE",
+    paused_at: null,
+    paused_duration_ms,
+  };
+}
+
+type ReviewCycleClock = {
+  state: ReviewCycleState;
+  due_at: Date;
+  active_window_expires_at: Date;
+  paused_duration_ms: number;
+  paused_at?: Date | null;
+  closure_reason?: string | null;
+};

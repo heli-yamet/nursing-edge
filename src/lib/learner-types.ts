@@ -161,6 +161,7 @@ export type Session = {
   assigned_versions: AssignedVersion[];
   created_at: Date;
   rule_set_version: string;
+  order_seed?: string;
   draft?: SessionDraft | null;
   held_position?: number | null;
 };
@@ -198,6 +199,7 @@ export type ReviewCycle = {
   due_at: Date;
   active_window_expires_at: Date;
   paused_duration_ms: number;
+  paused_at?: Date | null;
   triggering_attempt_id: string;
   triggering_six_state: SixState;
   closure_reason: string | null;

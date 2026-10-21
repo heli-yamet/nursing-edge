@@ -126,10 +126,7 @@ async function ensureIndexes(db: Db): Promise<void> {
   await db
     .collection("review_cycles")
     .createIndex({ cycle_id: 1 }, { unique: true });
-  await db.collection("review_cycles").createIndex(
-    { learner_id: 1, question_id: 1 },
-    { unique: true, partialFilterExpression: { state: "ACTIVE" } },
-  );
+  await ensureOpenReviewCycleIndex(db);
   await db.collection("review_cycles").createIndex({ learner_id: 1, due_at: 1 });
 
   await db
@@ -177,4 +174,41 @@ async function ensureIndexes(db: Db): Promise<void> {
     .createIndex({ learner_id: 1 }, { unique: true });
 
   await ensureRelationshipIndexes(db);
+}
+
+async function ensureOpenReviewCycleIndex(db: Db): Promise<void> {
+  const collection = db.collection("review_cycles");
+  const indexes = await collection.indexes();
+  const existing = indexes.find(
+    (index) =>
+      index.unique === true &&
+      index.key?.learner_id === 1 &&
+      index.key?.question_id === 1,
+  );
+  if (existing?.name && !openCycleIndexCoversPaused(existing.partialFilterExpression)) {
+    await collection.dropIndex(existing.name);
+  }
+  await collection.createIndex(
+    { learner_id: 1, question_id: 1 },
+    {
+      unique: true,
+      partialFilterExpression: { state: { $in: ["ACTIVE", "PAUSED"] } },
+    },
+  );
+}
+
+function openCycleIndexCoversPaused(filter: unknown): boolean {
+  if (typeof filter !== "object" || filter === null || !("state" in filter)) {
+    return false;
+  }
+  const state = filter.state;
+  if (typeof state !== "object" || state === null || !("$in" in state)) {
+    return false;
+  }
+  const values = state.$in;
+  return (
+    Array.isArray(values) &&
+    values.includes("ACTIVE") &&
+    values.includes("PAUSED")
+  );
 }

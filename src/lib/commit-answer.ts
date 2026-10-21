@@ -16,7 +16,9 @@ import type {
 } from "@/lib/learner-types";
 import {
   advanceReviewStage,
+  cycleHoldsQuestion,
   isAllowedConfidence,
+  pauseFieldsAfterAdvance,
   REVIEW_CYCLE_COMPLETED,
   reviewEntryForCommit,
   sixStateOf,
@@ -485,7 +487,7 @@ export function createMemoryCommitStore(input: {
           (cycle) =>
             cycle.learner_id === learnerId &&
             cycle.question_id === questionId &&
-            cycle.state === "ACTIVE",
+            cycleHoldsQuestion(cycle.state),
         ) ?? null
       );
     },
@@ -521,7 +523,7 @@ export function createMemoryCommitStore(input: {
           (row) =>
             row.learner_id === cycle.learner_id &&
             row.question_id === cycle.question_id &&
-            row.state === "ACTIVE",
+            cycleHoldsQuestion(row.state),
         )
       ) {
         return "already_active";
@@ -532,13 +534,20 @@ export function createMemoryCommitStore(input: {
     },
     async advanceReviewCycle({ cycleId, advance, transition }) {
       const cycle = cycles.find(
-        (row) => row.cycle_id === cycleId && row.state === "ACTIVE",
+        (row) => row.cycle_id === cycleId && cycleHoldsQuestion(row.state),
       );
       if (!cycle) {
         return "missing";
       }
+      const pause = pauseFieldsAfterAdvance(
+        cycle,
+        transition.occurred_at,
+        advance.kind === "complete" ? "complete" : "continue",
+      );
+      cycle.state = pause.state;
+      cycle.paused_at = pause.paused_at;
+      cycle.paused_duration_ms = pause.paused_duration_ms;
       if (advance.kind === "complete") {
-        cycle.state = "COMPLETE";
         cycle.closure_reason = REVIEW_CYCLE_COMPLETED;
       } else {
         cycle.stage = advance.stage;

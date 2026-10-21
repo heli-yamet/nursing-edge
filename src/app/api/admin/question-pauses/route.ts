@@ -5,6 +5,7 @@ import {
   pausePublishedVersions,
   recordPauseAudit,
 } from "@/lib/pause-versions";
+import { syncReviewCyclesForContent } from "@/lib/review-content-pause";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +44,9 @@ export async function POST(req: Request) {
     const questionVersionIds = raw;
     const store = await createMongoContentStore();
     const result = await pausePublishedVersions(store, questionVersionIds);
+    if (result.ok) {
+      await syncReviewCyclesForContent(questionVersionIds);
+    }
     await recordPauseAudit({
       actorAdminId: auth.admin.admin_id,
       questionVersionIds,
