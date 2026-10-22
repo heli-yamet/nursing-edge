@@ -5,15 +5,19 @@ import {
   reviewCycles,
   sessions,
 } from "@/lib/learner-collections";
-import { practiceBarredVersionIds } from "@/lib/practice-role";
+import { reviewOwnerBarredVersionIds } from "@/lib/practice-role";
+import { loadApprovedReviewOffers } from "@/lib/review-offers";
+import { maps } from "@/lib/relationship-collections";
 import { ALL_TOPICS, isPracticeScope } from "@/lib/practice-options";
 import { createMongoSessionStore } from "@/lib/mongo-session-store";
 import { isDueReviewCycle, isReviewStage, isSixState } from "@/lib/review-rules";
 import {
+  previewDueReview,
   selectOwnerVersionId,
   startReviewSession,
   type DueOwnerSource,
   type OwnerVersionCandidate,
+  type ReviewPreview,
   type StartReviewResult,
 } from "@/lib/review-session";
 
@@ -95,7 +99,7 @@ export async function loadDueOwnerSources(
         { projection: { _id: 0, question_id: 1, status: 1, topic_id: 1 } },
       )
       .toArray(),
-    practiceBarredVersionIds(),
+    reviewOwnerBarredVersionIds(),
     (await attempts())
       .find(
         { learner_id: learnerId, question_id: { $in: questionIds } },
@@ -114,6 +118,9 @@ export async function loadDueOwnerSources(
 
   const questionById = new Map(
     questionRows.map((question) => [question.question_id, question]),
+  );
+  const variantByVersion = await ownerVariantByVersion(
+    versionRows.map((version) => version.question_version_id),
   );
   const lastAttemptAt = new Map<string, Date>();
   for (const attempt of attemptRows) {
@@ -164,7 +171,63 @@ export async function loadDueOwnerSources(
           )
         : null,
     };
-  });
+  }).map((source) => ({
+    ...source,
+    variant_group_id: source.question_version_id
+      ? (variantByVersion.get(source.question_version_id) ?? null)
+      : null,
+  }));
+}
+
+async function ownerVariantByVersion(
+  versionIds: readonly string[],
+): Promise<Map<string, string | null>> {
+  const ids = [...new Set(versionIds.filter((id) => id.length > 0))];
+  if (ids.length === 0) {
+    return new Map();
+  }
+  const rows = await (
+    await maps()
+  )
+    .find(
+      { question_version: { $in: ids } },
+      {
+        projection: {
+          _id: 0,
+          question_version: 1,
+          map_revision: 1,
+          variant_group_id: 1,
+        },
+      },
+    )
+    .toArray();
+  const variants = new Map<string, string | null>();
+  for (const versionId of ids) {
+    const matches = rows.filter(
+      (row) =>
+        row.question_version === versionId && typeof row.map_revision === "number",
+    );
+    if (matches.length === 0) {
+      variants.set(versionId, null);
+      continue;
+    }
+    const top = Math.max(...matches.map((row) => row.map_revision));
+    const current = matches.filter((row) => row.map_revision === top);
+    const values = new Set(
+      current.map((row) =>
+        typeof row.variant_group_id === "string" ? row.variant_group_id : "",
+      ),
+    );
+    variants.set(versionId, values.size === 1 ? ([...values][0] ?? null) || null : null);
+  }
+  return variants;
+}
+
+export async function loadReviewPreview(
+  learnerId: string,
+  now: Date = new Date(),
+): Promise<ReviewPreview> {
+  return previewDueReview(await loadDueOwnerSources(learnerId, now));
 }
 
 export async function startLearnerReviewSession(
@@ -175,6 +238,7 @@ export async function startLearnerReviewSession(
     learnerId,
     store: await createMongoSessionStore(),
     loadDue: () => loadDueOwnerSources(learnerId, now),
+    loadOffers: (due) => loadApprovedReviewOffers(learnerId, due),
     now,
   });
 }

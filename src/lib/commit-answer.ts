@@ -15,16 +15,26 @@ import type {
   SessionDraft,
 } from "@/lib/learner-types";
 import {
+  reviewAssignmentKind,
+  reviewCycleQuestionId,
+} from "@/lib/review-follow";
+import {
   advanceReviewStage,
+  alternateConfirmationOutcome,
   cycleHoldsQuestion,
   isAllowedConfidence,
   pauseFieldsAfterAdvance,
   REVIEW_CYCLE_COMPLETED,
+  REVIEW_CYCLE_REDIRECTED,
   reviewEntryForCommit,
   sixStateOf,
   type ReviewAdvance,
 } from "@/lib/review-rules";
-import { sessionIsPlayable, stampRuleSetForCommit } from "@/lib/session-rules";
+import {
+  finishedAssignmentPositions,
+  sessionIsPlayable,
+  stampRuleSetForCommit,
+} from "@/lib/session-rules";
 
 export type ScoredOption = {
   option_id: string;
@@ -63,6 +73,13 @@ export type CommitStore = {
     advance: ReviewAdvance;
     transition: ReviewTransition;
   }): Promise<"advanced" | "missing">;
+  redirectReviewOwner(input: {
+    ownerCycleId: string;
+    sibling: ReviewCycle;
+    ownerTransition: ReviewTransition;
+    siblingTransition: ReviewTransition;
+  }): Promise<"redirected" | "missing">;
+  skipPosition(sessionId: string, position: number): Promise<void>;
   holdPosition(sessionId: string, position: number): Promise<void>;
   releaseHold(sessionId: string): Promise<void>;
   writeDraft(sessionId: string, draft: SessionDraft): Promise<void>;
@@ -180,7 +197,10 @@ async function sessionIsComplete(
   store: CommitStore,
   session: Session,
 ): Promise<boolean> {
-  const done = new Set(await store.committedPositions(session.session_id));
+  const done = finishedAssignmentPositions(
+    await store.committedPositions(session.session_id),
+    session.skipped_positions,
+  );
   return session.assigned_versions.every((item) => done.has(item.position));
 }
 
@@ -236,7 +256,7 @@ export async function commitSessionAnswer(input: {
   const assignedVersion = await input.store.loadVersion(
     assignment.question_version_id,
   );
-  if (assignedVersion?.practice_barred) {
+  if (assignedVersion?.practice_barred && session.type !== "REVIEW") {
     return { result: "unavailable" };
   }
 
@@ -259,8 +279,9 @@ export async function commitSessionAnswer(input: {
     return { result: "version_mismatch" };
   }
 
-  const done = new Set(
+  const done = finishedAssignmentPositions(
     await input.store.committedPositions(session.session_id),
+    session.skipped_positions,
   );
   const open = [...session.assigned_versions]
     .sort((left, right) => left.position - right.position)
@@ -287,11 +308,22 @@ export async function commitSessionAnswer(input: {
     return { result: "invalid_request" };
   }
 
+  const assignmentKind = reviewAssignmentKind(assignment);
   const reviewCycle =
-    session.type === "REVIEW"
-      ? await input.store.findActiveCycle(input.learnerId, assignment.question_id)
+    session.type === "REVIEW" && assignmentKind !== "support"
+      ? await input.store.findActiveCycle(
+          input.learnerId,
+          reviewCycleQuestionId(assignment),
+        )
       : null;
-  if (session.type === "REVIEW" && !reviewCycle) {
+  if (session.type === "REVIEW" && assignmentKind !== "support" && !reviewCycle) {
+    return { result: "unavailable" };
+  }
+  if (
+    reviewCycle &&
+    assignment.cycle_id &&
+    reviewCycle.cycle_id !== assignment.cycle_id
+  ) {
     return { result: "unavailable" };
   }
 
@@ -333,7 +365,76 @@ export async function commitSessionAnswer(input: {
     return finishStored(input.store, session, stored, "replay");
   }
 
-  if (reviewCycle) {
+  if (session.type === "REVIEW" && assignmentKind === "support") {
+    await input.store.holdPosition(session.session_id, position);
+    return finishStored(input.store, session, attempt, "committed");
+  }
+
+  if (reviewCycle && assignmentKind === "alternate") {
+    const outcome = alternateConfirmationOutcome(
+      attempt.correct,
+      attempt.confidence,
+      attempt.committed_at,
+    );
+    if (outcome.kind === "complete") {
+      const applied = await input.store.advanceReviewCycle({
+        cycleId: reviewCycle.cycle_id,
+        advance: outcome,
+        transition: {
+          transition_id: newId(),
+          cycle_id: reviewCycle.cycle_id,
+          attempt_id: attempt.attempt_id,
+          from_stage: reviewCycle.stage,
+          to_stage: null,
+          occurred_at: attempt.committed_at,
+          reason: "advance",
+        },
+      });
+      if (applied !== "advanced") {
+        throw new Error("active review cycle could not be advanced");
+      }
+    } else {
+      const sibling: ReviewCycle = {
+        cycle_id: newId(),
+        learner_id: input.learnerId,
+        question_id: assignment.question_id,
+        stage: outcome.stage,
+        state: "ACTIVE",
+        due_at: outcome.due_at,
+        active_window_expires_at: outcome.active_window_expires_at,
+        paused_duration_ms: 0,
+        triggering_attempt_id: attempt.attempt_id,
+        triggering_six_state: attempt.six_state,
+        closure_reason: null,
+        rule_set_version: attempt.rule_set_version,
+      };
+      const applied = await input.store.redirectReviewOwner({
+        ownerCycleId: reviewCycle.cycle_id,
+        sibling,
+        ownerTransition: {
+          transition_id: newId(),
+          cycle_id: reviewCycle.cycle_id,
+          attempt_id: attempt.attempt_id,
+          from_stage: reviewCycle.stage,
+          to_stage: null,
+          occurred_at: attempt.committed_at,
+          reason: REVIEW_CYCLE_REDIRECTED,
+        },
+        siblingTransition: {
+          transition_id: newId(),
+          cycle_id: sibling.cycle_id,
+          attempt_id: attempt.attempt_id,
+          from_stage: null,
+          to_stage: outcome.stage,
+          occurred_at: attempt.committed_at,
+          reason: REVIEW_CYCLE_REDIRECTED,
+        },
+      });
+      if (applied !== "redirected") {
+        throw new Error("active review cycle could not be redirected");
+      }
+    }
+  } else if (reviewCycle) {
     const advance = advanceReviewStage(
       reviewCycle.stage,
       attempt.correct,
@@ -358,9 +459,10 @@ export async function commitSessionAnswer(input: {
     }
   }
 
-  const entry = reviewCycle
-    ? null
-    : reviewEntryForCommit(
+  const entry =
+    reviewCycle || assignmentKind === "support"
+      ? null
+      : reviewEntryForCommit(
         attempt.correct,
         attempt.confidence,
         attempt.committed_at,
@@ -393,6 +495,76 @@ export async function commitSessionAnswer(input: {
 
   await input.store.holdPosition(session.session_id, position);
   return finishStored(input.store, session, attempt, "committed");
+}
+
+export type SkipSupportResult =
+  | { result: "skipped" }
+  | { result: "no_session" }
+  | { result: "not_playable" }
+  | { result: "invalid_request" }
+  | { result: "version_mismatch" }
+  | { result: "unavailable" };
+
+export async function skipReviewSupport(input: {
+  learnerId: string;
+  position: unknown;
+  questionVersionId: unknown;
+  store: CommitStore;
+}): Promise<SkipSupportResult> {
+  if (!isPosition(input.position)) {
+    return { result: "invalid_request" };
+  }
+  if (
+    typeof input.questionVersionId !== "string" ||
+    input.questionVersionId.length === 0
+  ) {
+    return { result: "invalid_request" };
+  }
+  const session = await input.store.findActive(input.learnerId);
+  if (!session) {
+    return { result: "no_session" };
+  }
+  if (!playable(session) || session.type !== "REVIEW") {
+    return { result: "not_playable" };
+  }
+  const assignment = session.assigned_versions.find(
+    (item) => item.position === input.position,
+  );
+  if (!assignment) {
+    return { result: "invalid_request" };
+  }
+  if (input.questionVersionId !== assignment.question_version_id) {
+    return { result: "version_mismatch" };
+  }
+  if (reviewAssignmentKind(assignment) !== "support") {
+    return { result: "invalid_request" };
+  }
+  if (typeof session.held_position === "number") {
+    return { result: "invalid_request" };
+  }
+  const existing = await input.store.findAttempt(session.session_id, input.position);
+  if (existing) {
+    return { result: "invalid_request" };
+  }
+  const done = finishedAssignmentPositions(
+    await input.store.committedPositions(session.session_id),
+    session.skipped_positions,
+  );
+  if (done.has(input.position)) {
+    return { result: "skipped" };
+  }
+  const open = [...session.assigned_versions]
+    .sort((left, right) => left.position - right.position)
+    .find((item) => !done.has(item.position));
+  if (open?.position !== input.position) {
+    return { result: "invalid_request" };
+  }
+  const version = await input.store.loadVersion(assignment.question_version_id);
+  if (!version || version.question_id !== assignment.question_id) {
+    return { result: "unavailable" };
+  }
+  await input.store.skipPosition(session.session_id, input.position);
+  return { result: "skipped" };
 }
 
 export async function readCommittedPosition(input: {
@@ -556,6 +728,52 @@ export function createMemoryCommitStore(input: {
       }
       transitions.push(structuredClone(transition));
       return "advanced";
+    },
+    async redirectReviewOwner({
+      ownerCycleId,
+      sibling,
+      ownerTransition,
+      siblingTransition,
+    }) {
+      const cycle = cycles.find(
+        (row) => row.cycle_id === ownerCycleId && cycleHoldsQuestion(row.state),
+      );
+      if (!cycle) {
+        return "missing";
+      }
+      const pause = pauseFieldsAfterAdvance(
+        cycle,
+        ownerTransition.occurred_at,
+        "complete",
+      );
+      cycle.state = "CLOSED";
+      cycle.closure_reason = REVIEW_CYCLE_REDIRECTED;
+      cycle.paused_at = pause.paused_at;
+      cycle.paused_duration_ms = pause.paused_duration_ms;
+      transitions.push(structuredClone(ownerTransition));
+      const siblingHeld = cycles.some(
+        (row) =>
+          row.learner_id === sibling.learner_id &&
+          row.question_id === sibling.question_id &&
+          cycleHoldsQuestion(row.state),
+      );
+      if (!siblingHeld) {
+        cycles.push(structuredClone(sibling));
+        transitions.push(structuredClone(siblingTransition));
+      }
+      return "redirected";
+    },
+    async skipPosition(sessionId, position) {
+      const session = sessions.find((item) => item.session_id === sessionId);
+      if (!session) {
+        return;
+      }
+      const skipped = new Set(session.skipped_positions ?? []);
+      skipped.add(position);
+      session.skipped_positions = [...skipped];
+      if (session.draft?.position === position) {
+        session.draft = null;
+      }
     },
     async holdPosition(sessionId, position) {
       const session = sessions.find((item) => item.session_id === sessionId);

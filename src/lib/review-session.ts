@@ -9,9 +9,15 @@ import {
   type SixState,
 } from "@/lib/learner-types";
 import type { SessionStore } from "@/lib/practice-session";
+import {
+  claimAlternates,
+  matchPrioritySupports,
+  type ReviewFollowOffer,
+} from "@/lib/review-follow";
 import { sessionQuestionsAreUnique } from "@/lib/session-rules";
 
 export const REVIEW_ASSIGNMENT_CAP = 20;
+export const PHYSIOLOGY_ASSIGNMENT_CAP = 4;
 export const PROTECTED_CONFIRMATIONS = 4;
 
 export type OwnerVersionCandidate = {
@@ -33,6 +39,7 @@ export type DueOwnerSource = {
   triggering_six_state?: SixState | null;
   last_owner_attempt_at?: Date | null;
   in_focus?: boolean;
+  variant_group_id?: string | null;
 };
 
 export function selectOwnerVersionId(
@@ -81,6 +88,7 @@ const REPAIR_TRIGGER_RANK: Partial<Record<SixState, number>> = {
 export function assignDueOwnerQuestions(
   sources: readonly DueOwnerSource[],
   seed: string,
+  offers: readonly ReviewFollowOffer[] = [],
 ): AssignedVersion[] {
   const ready = sources.filter(
     (source): source is ReadyOwner =>
@@ -88,12 +96,131 @@ export function assignDueOwnerQuestions(
       source.question_version_id.length > 0 &&
       (source.stage === "REPAIR" || source.stage === "CONFIRMATION"),
   );
-  const selected = selectClinicalOwners(dedupeOwners(ready));
-  return orderReviewBlocks(selected, seed).map((source, index) => ({
-    position: index + 1,
+  const unique = dedupeOwners(ready);
+  const plan = planReviewAssignments(unique, offers);
+  const ordered = orderReviewBlocks(plan.owners, seed);
+  const rows: AssignedVersion[] = [];
+  for (const source of ordered) {
+    if (source.stage === "REPAIR") {
+      const support = plan.supports.get(source.cycle_id);
+      if (support) {
+        rows.push(followedAssignment(source, support, "support"));
+      }
+    }
+    const alternate =
+      source.stage === "CONFIRMATION"
+        ? plan.alternates.get(source.cycle_id)
+        : undefined;
+    rows.push(
+      alternate
+        ? followedAssignment(source, alternate, "alternate")
+        : ownerAssignment(source),
+    );
+  }
+  return rows.map((row, index) => ({ ...row, position: index + 1 }));
+}
+
+function planReviewAssignments(
+  sources: readonly ReadyOwner[],
+  offers: readonly ReviewFollowOffer[],
+): {
+  owners: ReadyOwner[];
+  supports: Map<string, ReviewFollowOffer>;
+  alternates: Map<string, ReviewFollowOffer>;
+} {
+  const supportOffers = offers.filter((offer) => offer.kind === "support");
+  let owners: ReadyOwner[];
+  let supports: Map<string, ReviewFollowOffer>;
+  if (sources.length > REVIEW_ASSIGNMENT_CAP) {
+    owners = selectClinicalOwners(sources, REVIEW_ASSIGNMENT_CAP);
+    supports = new Map();
+    for (let count = PHYSIOLOGY_ASSIGNMENT_CAP; count >= 0; count -= 1) {
+      const selected = selectClinicalOwners(sources, REVIEW_ASSIGNMENT_CAP - count);
+      const matched =
+        count === 0
+          ? new Map<string, ReviewFollowOffer>()
+          : matchPrioritySupports(
+              repairSlots(selected, supportOffers),
+              count,
+              questionIds(selected),
+            );
+      if (matched.size === count) {
+        owners = selected;
+        supports = matched;
+        break;
+      }
+    }
+  } else if (sources.length === REVIEW_ASSIGNMENT_CAP) {
+    owners = [...sources];
+    supports = new Map();
+  } else {
+    owners = [...sources];
+    supports = matchPrioritySupports(
+      repairSlots(owners, supportOffers),
+      Math.min(PHYSIOLOGY_ASSIGNMENT_CAP, REVIEW_ASSIGNMENT_CAP - owners.length),
+      questionIds(owners),
+    );
+  }
+
+  const supportQuestionIds = new Set(
+    [...supports.values()].map((offer) => offer.question_id),
+  );
+  const alternates = claimAlternates(
+    [...owners]
+      .filter((source) => source.stage === "CONFIRMATION")
+      .sort(compareConfirmationPriority),
+    offers,
+    new Set([...questionIds(owners), ...supportQuestionIds]),
+    new Set(
+      owners.flatMap((source) =>
+        source.variant_group_id ? [source.variant_group_id] : [],
+      ),
+    ),
+  );
+  return { owners, supports, alternates };
+}
+
+function repairSlots(
+  owners: readonly ReadyOwner[],
+  offers: readonly ReviewFollowOffer[],
+): { cycle_id: string; edges: ReviewFollowOffer[] }[] {
+  return [...owners]
+    .filter((source) => source.stage === "REPAIR")
+    .sort(compareRepairPriority)
+    .map((source) => ({
+      cycle_id: source.cycle_id,
+      edges: offers.filter((offer) => offer.cycle_id === source.cycle_id),
+    }));
+}
+
+function questionIds(owners: readonly ReadyOwner[]): Set<string> {
+  return new Set(owners.map((source) => source.question_id));
+}
+
+function ownerAssignment(source: ReadyOwner): AssignedVersion {
+  return {
+    position: 0,
     question_id: source.question_id,
     question_version_id: source.question_version_id,
-  }));
+    review_kind: "owner",
+    cycle_id: source.cycle_id,
+    owner_question_id: source.question_id,
+  };
+}
+
+function followedAssignment(
+  source: ReadyOwner,
+  offer: ReviewFollowOffer,
+  kind: "alternate" | "support",
+): AssignedVersion {
+  return {
+    position: 0,
+    question_id: offer.question_id,
+    question_version_id: offer.question_version_id,
+    review_kind: kind,
+    cycle_id: source.cycle_id,
+    owner_question_id: source.question_id,
+  };
 }
 
 function dedupeOwners(sources: readonly ReadyOwner[]): ReadyOwner[] {
@@ -116,8 +243,11 @@ function dedupeOwners(sources: readonly ReadyOwner[]): ReadyOwner[] {
   return unique;
 }
 
-function selectClinicalOwners(sources: readonly ReadyOwner[]): ReadyOwner[] {
-  if (sources.length <= REVIEW_ASSIGNMENT_CAP) {
+function selectClinicalOwners(
+  sources: readonly ReadyOwner[],
+  cap: number,
+): ReadyOwner[] {
+  if (sources.length <= cap) {
     return [...sources];
   }
   const confirmations = sources
@@ -126,9 +256,9 @@ function selectClinicalOwners(sources: readonly ReadyOwner[]): ReadyOwner[] {
   const repairs = sources
     .filter((source) => source.stage === "REPAIR")
     .sort(compareRepairPriority);
-  const reserved = Math.min(PROTECTED_CONFIRMATIONS, confirmations.length);
-  const repairTake = Math.min(repairs.length, REVIEW_ASSIGNMENT_CAP - reserved);
-  const confirmationTake = REVIEW_ASSIGNMENT_CAP - repairTake;
+  const reserved = Math.min(PROTECTED_CONFIRMATIONS, confirmations.length, cap);
+  const repairTake = Math.min(repairs.length, Math.max(0, cap - reserved));
+  const confirmationTake = cap - repairTake;
   return [
     ...confirmations.slice(0, confirmationTake),
     ...repairs.slice(0, repairTake),
@@ -226,6 +356,32 @@ function newReviewSeed(): string {
   return randomBytes(32).toString("hex");
 }
 
+export type ReviewPreview =
+  | { result: "ready"; dueCount: number }
+  | { result: "none_due" }
+  | { result: "unavailable" };
+
+/** Counts due clinical owners. Physiology questions are chosen only at start. */
+export function previewDueReview(sources: readonly DueOwnerSource[]): ReviewPreview {
+  if (sources.length === 0) {
+    return { result: "none_due" };
+  }
+  const ready = new Set(
+    sources
+      .filter(
+        (source) =>
+          typeof source.question_version_id === "string" &&
+          source.question_version_id.length > 0 &&
+          (source.stage === "REPAIR" || source.stage === "CONFIRMATION"),
+      )
+      .map((source) => source.question_id),
+  );
+  if (ready.size === 0) {
+    return { result: "unavailable" };
+  }
+  return { result: "ready", dueCount: ready.size };
+}
+
 export type StartReviewResult =
   | { result: "created"; session: Session }
   | { result: "already_active"; session: Session }
@@ -237,6 +393,7 @@ export async function startReviewSession(input: {
   learnerId: string;
   store: SessionStore;
   loadDue: () => Promise<DueOwnerSource[]>;
+  loadOffers?: (due: readonly DueOwnerSource[]) => Promise<ReviewFollowOffer[]>;
   now?: Date;
   newId?: () => string;
   seed?: string;
@@ -250,8 +407,9 @@ export async function startReviewSession(input: {
   }
 
   const due = await input.loadDue();
+  const offers = (await input.loadOffers?.(due)) ?? [];
   const seed = input.seed ?? newReviewSeed();
-  const assigned = assignDueOwnerQuestions(due, seed);
+  const assigned = assignDueOwnerQuestions(due, seed, offers);
   if (assigned.length === 0) {
     return { result: due.length > 0 ? "unavailable" : "none_due" };
   }

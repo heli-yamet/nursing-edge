@@ -108,6 +108,40 @@ export function advanceReviewStage(
 }
 
 export const REVIEW_CYCLE_COMPLETED = "completed";
+export const REVIEW_CYCLE_REDIRECTED = "redirected";
+export const SUPPORT_SKIP_LABEL = "Continue without this physiology question";
+
+/**
+ * Correct and Sure, or Correct and Confident, completes the owner and opens
+ * no cycle for the sibling. Any other answer closes the owner as redirected
+ * and opens one Repair owned by the sibling.
+ */
+export function alternateConfirmationOutcome(
+  correct: boolean,
+  confidence: Confidence,
+  committedAt: Date,
+): ReviewAdvance | ReviewRedirect {
+  if (!isAllowedConfidence(confidence)) {
+    throw new Error("confidence must be UNSURE, SURE, or CONFIDENT");
+  }
+  if (reviewSuccess(correct, confidence)) {
+    return { kind: "complete" };
+  }
+  const due_at = new Date(committedAt.getTime() + REPAIR_DELAY_MS);
+  return {
+    kind: "redirect",
+    stage: "REPAIR",
+    due_at,
+    active_window_expires_at: activeWindowExpiresAt(due_at),
+  };
+}
+
+export type ReviewRedirect = {
+  kind: "redirect";
+  stage: "REPAIR";
+  due_at: Date;
+  active_window_expires_at: Date;
+};
 
 export function isReviewItemDue(now: Date, dueAt: Date, expiresAt: Date): boolean {
   return dueAt.getTime() <= now.getTime() && now.getTime() < expiresAt.getTime();

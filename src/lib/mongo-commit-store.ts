@@ -1,10 +1,12 @@
 import {
   commitSessionAnswer,
   readCommittedPosition,
+  skipReviewSupport,
   type CommitAnswerResult,
   type CommitStore,
   type CommittedReadResult,
   type ScoredVersion,
+  type SkipSupportResult,
 } from "@/lib/commit-answer";
 import {
   releaseSessionHold,
@@ -25,6 +27,7 @@ import { isPracticeBarredRole } from "@/lib/practice-role";
 import {
   pauseFieldsAfterAdvance,
   REVIEW_CYCLE_COMPLETED,
+  REVIEW_CYCLE_REDIRECTED,
 } from "@/lib/review-rules";
 import { runtimeRoles } from "@/lib/relationship-collections";
 import type { ClientSession } from "mongodb";
@@ -261,6 +264,79 @@ export async function createMongoCommitStore(
       await transitionRows.insertOne({ ...transition }, transaction);
       return "advanced";
     },
+    async redirectReviewOwner({
+      ownerCycleId,
+      sibling,
+      ownerTransition,
+      siblingTransition,
+    }) {
+      const cycle = await cycleRows.findOne(
+        { cycle_id: ownerCycleId, state: { $in: ["ACTIVE", "PAUSED"] } },
+        { projection: { _id: 0 }, ...transaction },
+      );
+      if (!cycle) {
+        return "missing";
+      }
+      const pause = pauseFieldsAfterAdvance(
+        cycle,
+        ownerTransition.occurred_at,
+        "complete",
+      );
+      const updated = await cycleRows.updateOne(
+        { cycle_id: ownerCycleId, state: { $in: ["ACTIVE", "PAUSED"] } },
+        {
+          $set: {
+            state: "CLOSED",
+            closure_reason: REVIEW_CYCLE_REDIRECTED,
+            paused_at: pause.paused_at,
+            paused_duration_ms: pause.paused_duration_ms,
+          },
+        },
+        transaction,
+      );
+      if (updated.matchedCount !== 1) {
+        return "missing";
+      }
+      await transitionRows.insertOne({ ...ownerTransition }, transaction);
+      const siblingHeld = await cycleRows.findOne(
+        {
+          learner_id: sibling.learner_id,
+          question_id: sibling.question_id,
+          state: { $in: ["ACTIVE", "PAUSED"] },
+        },
+        { projection: { _id: 1 }, ...transaction },
+      );
+      if (!siblingHeld) {
+        try {
+          await cycleRows.insertOne({ ...sibling }, transaction);
+          await transitionRows.insertOne({ ...siblingTransition }, transaction);
+        } catch (error) {
+          if (!isDuplicate(error, ["learner_id", "question_id"])) {
+            throw error;
+          }
+        }
+      }
+      return "redirected";
+    },
+    async skipPosition(sessionId, position) {
+      const session = await sessionRows.findOne(
+        { session_id: sessionId },
+        { projection: { _id: 0, draft: 1, skipped_positions: 1 }, ...transaction },
+      );
+      if (!session) {
+        return;
+      }
+      const skipped = new Set(session.skipped_positions ?? []);
+      skipped.add(position);
+      await sessionRows.updateOne(
+        { session_id: sessionId },
+        {
+          $set: { skipped_positions: [...skipped] },
+          ...(session.draft?.position === position ? { $unset: { draft: "" } } : {}),
+        },
+        transaction,
+      );
+    },
     async holdPosition(sessionId, position) {
       await sessionRows.updateOne(
         { session_id: sessionId },
@@ -316,6 +392,17 @@ export async function saveLearnerDraft(input: {
   return runInTransaction(async (mongoSession) => {
     const store = await createMongoCommitStore(mongoSession);
     return saveSessionDraft({ ...input, store });
+  });
+}
+
+export async function skipLearnerSupport(input: {
+  learnerId: string;
+  position: unknown;
+  questionVersionId: unknown;
+}): Promise<SkipSupportResult> {
+  return runInTransaction(async (mongoSession) => {
+    const store = await createMongoCommitStore(mongoSession);
+    return skipReviewSupport({ ...input, store });
   });
 }
 

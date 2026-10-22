@@ -60,6 +60,19 @@ export function sessionQuestionsAreUnique(
   return new Set(ids).size === ids.length;
 }
 
+export function finishedAssignmentPositions(
+  attempted: readonly number[],
+  skipped: readonly number[] | null | undefined,
+): Set<number> {
+  const done = new Set(attempted);
+  for (const position of skipped ?? []) {
+    if (Number.isInteger(position) && position >= 1) {
+      done.add(position);
+    }
+  }
+  return done;
+}
+
 export function stampRuleSetForCommit<T extends object>(
   session: T,
 ): { session: T & { rule_set_version: string }; version: string } {

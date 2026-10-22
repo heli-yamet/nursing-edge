@@ -68,10 +68,18 @@ export type ReviewTeaching = {
   reasoning_map_question_version_record: string;
 };
 
+export type ReviewAssignmentKind = "owner" | "alternate" | "support";
+
 export type AssignedVersion = {
   position: number;
   question_id: string;
   question_version_id: string;
+  /** Set on Review assignments. Practice and Calibration leave it unset. */
+  review_kind?: ReviewAssignmentKind;
+  /** Clinical cycle this assignment serves. */
+  cycle_id?: string;
+  /** Question that owns the cycle. The served question when this row is the owner. */
+  owner_question_id?: string;
 };
 
 export type Learner = {
@@ -164,6 +172,8 @@ export type Session = {
   order_seed?: string;
   draft?: SessionDraft | null;
   held_position?: number | null;
+  /** Physiology supports the learner continued past. These are not attempts. */
+  skipped_positions?: number[];
 };
 
 export type Attempt = {

@@ -6,7 +6,10 @@ import {
 import type { FactualReveal } from "@/lib/factual-reveal";
 import type { Confidence, SessionDraft } from "@/lib/learner-types";
 import { isAllowedConfidence } from "@/lib/review-rules";
-import { sessionIsPlayable } from "@/lib/session-rules";
+import {
+  finishedAssignmentPositions,
+  sessionIsPlayable,
+} from "@/lib/session-rules";
 
 export type SaveDraftResult =
   | { result: "saved"; draft: SessionDraft }
@@ -112,7 +115,10 @@ export async function saveSessionDraft(input: {
     };
   }
 
-  const done = new Set(await input.store.committedPositions(session.session_id));
+  const done = finishedAssignmentPositions(
+    await input.store.committedPositions(session.session_id),
+    session.skipped_positions,
+  );
   const open = [...session.assigned_versions]
     .sort((left, right) => left.position - right.position)
     .find((item) => !done.has(item.position));
@@ -121,11 +127,10 @@ export async function saveSessionDraft(input: {
   }
 
   const version = await input.store.loadVersion(assignment.question_version_id);
-  if (
-    !version ||
-    version.question_id !== assignment.question_id ||
-    version.practice_barred
-  ) {
+  if (!version || version.question_id !== assignment.question_id) {
+    return { result: "unavailable" };
+  }
+  if (version.practice_barred && session.type !== "REVIEW") {
     return { result: "unavailable" };
   }
   const optionIds = version.options.map((option) => option.option_id);

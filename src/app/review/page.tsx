@@ -3,9 +3,12 @@ import Link from "next/link";
 import { EndSessionControl } from "@/components/EndSessionControl";
 import { LearnerShell } from "@/components/LearnerShell";
 import { OpenQuestion } from "@/components/OpenQuestion";
+import { ReviewStartButton } from "@/components/ReviewStartButton";
 import { requireAuthorizedLearner } from "@/lib/learner-gate";
 import { loadOpenPlayerQuestion } from "@/lib/player-load";
-import { startLearnerReviewSession } from "@/lib/review-setup";
+import { readActiveSession } from "@/lib/practice-setup";
+import { loadReviewPreview } from "@/lib/review-setup";
+import { REVIEW_ASSIGNMENT_CAP } from "@/lib/review-session";
 
 export const metadata: Metadata = {
   title: "Review",
@@ -18,9 +21,9 @@ const buttonClass =
 
 export default async function ReviewPage() {
   const learner = await requireAuthorizedLearner();
-  const started = await startLearnerReviewSession(learner.learner_id);
+  const active = await readActiveSession(learner.learner_id);
 
-  if (started.result === "other_session") {
+  if (active && active.type !== "REVIEW") {
     return (
       <LearnerShell current="review" dashboard>
         <h1 className="pt-8 text-[28px] leading-tight font-semibold text-[#163A59] sm:text-[32px]">
@@ -36,7 +39,9 @@ export default async function ReviewPage() {
     );
   }
 
-  if (started.result === "none_due") {
+  const preview = active ? null : await loadReviewPreview(learner.learner_id);
+
+  if (preview?.result === "none_due") {
     return (
       <LearnerShell current="review" dashboard>
         <h1 className="pt-8 text-[28px] leading-tight font-semibold text-[#163A59] sm:text-[32px]">
@@ -50,7 +55,7 @@ export default async function ReviewPage() {
     );
   }
 
-  if (started.result === "unavailable") {
+  if (preview?.result === "unavailable") {
     return (
       <LearnerShell current="review" dashboard>
         <h1 className="pt-8 text-[28px] leading-tight font-semibold text-[#163A59] sm:text-[32px]">
@@ -59,6 +64,29 @@ export default async function ReviewPage() {
         <p className="mt-4 max-w-xl text-base leading-7 text-[#24313A]" role="status">
           A review question is due, but it is temporarily unavailable.
         </p>
+      </LearnerShell>
+    );
+  }
+
+  if (preview?.result === "ready") {
+    const count = preview.dueCount;
+    return (
+      <LearnerShell current="review" dashboard>
+        <h1 className="pt-8 text-[28px] leading-tight font-semibold text-[#163A59] sm:text-[32px]">
+          Review
+        </h1>
+        <p className="mt-4 max-w-xl text-base leading-7 text-[#24313A]">
+          {count === 1
+            ? "1 review question is due."
+            : `${count} review questions are due.`}
+        </p>
+        {count > REVIEW_ASSIGNMENT_CAP ? (
+          <p className="mt-2 max-w-xl text-base leading-7 text-[#24313A]">
+            A Review session holds up to {REVIEW_ASSIGNMENT_CAP} questions. The
+            rest stay due for your next session.
+          </p>
+        ) : null}
+        <ReviewStartButton />
       </LearnerShell>
     );
   }
@@ -96,6 +124,7 @@ export default async function ReviewPage() {
               }
               initialReveal={loaded.result === "feedback" ? loaded.reveal : null}
               initialIsLast={loaded.result === "feedback" ? loaded.isLast : false}
+              supportSkip={loaded.result === "open" && loaded.supportSkip}
             />
           ) : (
             <div>

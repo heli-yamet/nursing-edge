@@ -13,6 +13,7 @@ import {
 } from "@/lib/answer-selection";
 import { EndSessionControl } from "@/components/EndSessionControl";
 import { EMPTY_DEEPER, type FactualReveal } from "@/lib/factual-reveal";
+import { SUPPORT_SKIP_LABEL } from "@/lib/review-rules";
 import { sixStateCopy } from "@/lib/six-state-copy";
 import type { Confidence, QuestionFormat } from "@/lib/learner-types";
 import type { PreCommitOption } from "@/lib/player-question";
@@ -275,6 +276,7 @@ export function OpenQuestion({
   initialReveal = null,
   initialIsLast = false,
   endHref = "/practice/ended",
+  supportSkip = false,
 }: {
   label: string;
   position: number;
@@ -288,6 +290,7 @@ export function OpenQuestion({
   initialReveal?: FactualReveal | null;
   initialIsLast?: boolean;
   endHref?: "/practice/ended" | "/review/ended";
+  supportSkip?: boolean;
 }) {
   const router = useRouter();
   const [pendingNav, startNav] = useTransition();
@@ -431,6 +434,40 @@ export function OpenQuestion({
     }
   }
 
+  async function skipSupport() {
+    if (!supportSkip || reveal || pending) {
+      return;
+    }
+    setPending(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/learner/sessions/skip-support", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          position,
+          question_version_id: questionVersionId,
+        }),
+      });
+      const body = (await response.json()) as { ok?: boolean };
+      if (!response.ok || !body.ok) {
+        setError(
+          "This physiology question is still open. Stay on this page and try again.",
+        );
+        return;
+      }
+      startNav(() => {
+        router.refresh();
+      });
+    } catch {
+      setError(
+        "This physiology question is still open. Stay on this page and try again.",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
   function advance() {
     startNav(() => {
       void fetch("/api/learner/sessions/advance", { method: "POST" }).finally(
@@ -537,6 +574,18 @@ export function OpenQuestion({
         <p className="mt-6 text-base leading-7 text-[#24313A]" role="alert">
           {error}
         </p>
+      ) : null}
+      {supportSkip && !reveal ? (
+        <button
+          type="button"
+          className={`${secondaryButtonClass} mt-5`}
+          disabled={pending || pendingNav}
+          onClick={() => {
+            void skipSupport();
+          }}
+        >
+          {SUPPORT_SKIP_LABEL}
+        </button>
       ) : null}
       <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

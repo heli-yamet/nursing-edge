@@ -5,8 +5,10 @@ import {
   practiceRoleForVersion,
 } from "@/lib/practice-role";
 import { attempts, questionVersions } from "@/lib/learner-collections";
-import type { Confidence, SessionDraft } from "@/lib/learner-types";
+import type { Confidence, SessionDraft, SessionType } from "@/lib/learner-types";
+import { reviewAssignmentKind } from "@/lib/review-follow";
 import {
+  finishedAssignmentPositions,
   sessionIsPlayable,
   type PlayableSessionType,
 } from "@/lib/session-rules";
@@ -36,6 +38,7 @@ export type PlayerLoad =
       questionVersionId: string;
       question: PreCommitQuestion;
       draft: PlayerDraft | null;
+      supportSkip: boolean;
     }
   | {
       result: "feedback";
@@ -55,12 +58,14 @@ export function questionCanBeDisplayed(
     format: string;
   } | null,
   role: string | null | undefined,
+  sessionType?: SessionType,
 ): boolean {
+  const practiceGate = sessionType !== "REVIEW";
   return Boolean(
     version?.stem &&
       version.options &&
       isSupportedInteraction(version.format) &&
-      !isPracticeBarredRole(role),
+      !(practiceGate && isPracticeBarredRole(role)),
   );
 }
 
@@ -101,7 +106,10 @@ export async function loadOpenPlayerQuestion(
       { projection: { _id: 0, position: 1 } },
     )
     .toArray();
-  const done = new Set(committed.map((attempt) => attempt.position));
+  const done = finishedAssignmentPositions(
+    committed.map((attempt) => attempt.position),
+    session.skipped_positions,
+  );
   const open = assigned.find((item) => !done.has(item.position));
   if (!open) {
     return { result: "none_open", size };
@@ -114,7 +122,7 @@ export async function loadOpenPlayerQuestion(
     { projection: QUESTION_PROJECTION },
   );
   const role = await practiceRoleForVersion(open.question_version_id);
-  if (!version || !questionCanBeDisplayed(version, role)) {
+  if (!version || !questionCanBeDisplayed(version, role, session.type)) {
     return { result: "unavailable" };
   }
 
@@ -126,6 +134,8 @@ export async function loadOpenPlayerQuestion(
     questionVersionId: open.question_version_id,
     question: toPreCommitQuestion(version),
     draft: restoredDraft(session.draft, open.position, open.question_version_id, version),
+    supportSkip:
+      session.type === "REVIEW" && reviewAssignmentKind(open) === "support",
   };
 }
 
@@ -182,7 +192,7 @@ async function heldFeedback(
     { projection: QUESTION_PROJECTION },
   );
   const role = await practiceRoleForVersion(assignment.question_version_id);
-  if (isPracticeBarredRole(role)) {
+  if (isPracticeBarredRole(role) && type !== "REVIEW") {
     return { result: "unavailable" };
   }
   if (
