@@ -125,6 +125,7 @@ export default async function ReviewPage() {
               initialReveal={loaded.result === "feedback" ? loaded.reveal : null}
               initialIsLast={loaded.result === "feedback" ? loaded.isLast : false}
               supportSkip={loaded.result === "open" && loaded.supportSkip}
+              interview={loaded.result === "open" ? loaded.interview : null}
             />
           ) : (
             <div>

@@ -19,6 +19,7 @@ import type {
   TransferLink,
   VariantGroup,
 } from "@/lib/relationship-types";
+import type { TeachingDecision } from "@/lib/review-interview";
 
 export async function cjClasses() {
   return (await getDb()).collection<CjClass>("cj_classes");
@@ -72,6 +73,10 @@ export async function dependencyRetirements() {
 
 export async function precommitTeaching() {
   return (await getDb()).collection<PrecommitTeaching>("precommit_teaching");
+}
+
+export async function teachingDecisions() {
+  return (await getDb()).collection<TeachingDecision>("teaching_decisions");
 }
 
 export async function evidenceBindings() {

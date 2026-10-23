@@ -12,7 +12,9 @@ import {
   sameAnswer,
 } from "@/lib/answer-selection";
 import { EndSessionControl } from "@/components/EndSessionControl";
+import { ReviewInterview } from "@/components/ReviewInterview";
 import { EMPTY_DEEPER, type FactualReveal } from "@/lib/factual-reveal";
+import type { InterviewOpening } from "@/lib/review-interview";
 import { SUPPORT_SKIP_LABEL } from "@/lib/review-rules";
 import { sixStateCopy } from "@/lib/six-state-copy";
 import type { Confidence, QuestionFormat } from "@/lib/learner-types";
@@ -277,6 +279,7 @@ export function OpenQuestion({
   initialIsLast = false,
   endHref = "/practice/ended",
   supportSkip = false,
+  interview = null,
 }: {
   label: string;
   position: number;
@@ -291,6 +294,7 @@ export function OpenQuestion({
   initialIsLast?: boolean;
   endHref?: "/practice/ended" | "/review/ended";
   supportSkip?: boolean;
+  interview?: InterviewOpening | null;
 }) {
   const router = useRouter();
   const [pendingNav, startNav] = useTransition();
@@ -510,6 +514,14 @@ export function OpenQuestion({
       <p className="mt-5 text-base leading-7 whitespace-pre-wrap text-[#24313A]">
         {stem}
       </p>
+      {interview ? (
+        <ReviewInterview
+          interview={interview}
+          position={position}
+          questionVersionId={questionVersionId}
+          disabled={locked}
+        />
+      ) : null}
       <fieldset className="mt-4" disabled={locked}>
         <legend className="sr-only">
           {format === "MCQ" ? "Select one answer" : "Select all that apply"}

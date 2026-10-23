@@ -19,6 +19,8 @@ import {
   type PreCommitQuestion,
 } from "@/lib/player-question";
 import { readActiveSession } from "@/lib/practice-setup";
+import { loadApprovedInterview } from "@/lib/mongo-interview-store";
+import { interviewOpening, type InterviewOpening } from "@/lib/review-interview";
 
 export type PlayerDraft = {
   selected_option_ids: string[];
@@ -39,6 +41,8 @@ export type PlayerLoad =
       question: PreCommitQuestion;
       draft: PlayerDraft | null;
       supportSkip: boolean;
+      /** Review only, before commit. */
+      interview: InterviewOpening | null;
     }
   | {
       result: "feedback";
@@ -126,6 +130,11 @@ export async function loadOpenPlayerQuestion(
     return { result: "unavailable" };
   }
 
+  const interview =
+    session.type === "REVIEW"
+      ? await loadApprovedInterview(open.question_id, open.question_version_id)
+      : null;
+
   return {
     result: "open",
     type: session.type,
@@ -136,6 +145,7 @@ export async function loadOpenPlayerQuestion(
     draft: restoredDraft(session.draft, open.position, open.question_version_id, version),
     supportSkip:
       session.type === "REVIEW" && reviewAssignmentKind(open) === "support",
+    interview: interview ? interviewOpening(interview) : null,
   };
 }
 

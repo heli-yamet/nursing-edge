@@ -18,6 +18,7 @@ import type {
   ReviewTransition,
   Session,
 } from "@/lib/learner-types";
+import type { InterviewDelivery } from "@/lib/review-interview";
 
 export async function learners() {
   return (await getDb()).collection<Learner>("learners");
@@ -83,6 +84,10 @@ export async function reviewCycles() {
 
 export async function reviewTransitions() {
   return (await getDb()).collection<ReviewTransition>("review_transitions");
+}
+
+export async function interviewDeliveries() {
+  return (await getDb()).collection<InterviewDelivery>("interview_deliveries");
 }
 
 export async function attempts() {

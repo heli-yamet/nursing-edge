@@ -49,6 +49,7 @@ export const relationshipIndexes: RelationshipIndex[] = [
   lookup("dependency_retirements", { replacement_target_question_version: 1 }),
   unique("precommit_teaching", { teaching_id: 1, teaching_revision: 1 }),
   lookup("precommit_teaching", { question_version: 1 }),
+  unique("teaching_decisions", { teaching_id: 1, teaching_revision: 1 }),
   unique("evidence_bindings", { binding_id: 1, binding_revision: 1 }),
   lookup("evidence_bindings", { question_version: 1 }),
   unique("mechanisms", { mechanism_id: 1, mechanism_revision: 1 }),
