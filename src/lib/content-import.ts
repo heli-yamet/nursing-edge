@@ -5,6 +5,7 @@ import {
   importWorkbookRelationships,
   type DomainCounts,
   type RelationshipDomains,
+  type WorkbookRole,
 } from "@/lib/relationship-import";
 import type { RelationshipStore } from "@/lib/relationship-store";
 import { stageImport, type StageImportResult } from "@/lib/stage-import";
@@ -14,6 +15,7 @@ export const MAX_CONTENT_IMPORT_BYTES = 10 * 1024 * 1024;
 
 export type ContentImportResult = StageImportResult & {
   domains: RelationshipDomains & { content: DomainCounts };
+  workbook_role: WorkbookRole;
 };
 
 export type ContentImportFileCheck =
@@ -60,7 +62,7 @@ export async function importC2Buffer(
   const sheets = await readXlsxSheetRows(buffer);
   const records = parseC2Sheets(sheets);
   const staged = await stageImport(store, { records, source });
-  const relationshipDomains = await importWorkbookRelationships({
+  const relationshipResult = await importWorkbookRelationships({
     sheets,
     source,
     store: relationships ?? null,
@@ -74,7 +76,8 @@ export async function importC2Buffer(
         failed: staged.batch.failed_count,
         unchanged: staged.batch.unchanged_count,
       },
-      ...relationshipDomains,
+      ...relationshipResult.domains,
     },
+    workbook_role: relationshipResult.workbook_role,
   };
 }

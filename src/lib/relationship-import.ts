@@ -19,14 +19,26 @@ export type RelationshipDomains = {
   runtime_binding: DomainCounts;
 };
 
-const SIBLING_WORKBOOK = "Nursing_Edge_Sibling500_Production_R7.xlsx";
-const AP_WORKBOOK = "Nursing_Edge_AP450_Production_R7.xlsx";
-const CLINICAL_CORE_WORKBOOKS = new Set([
-  "Nursing_Edge_Selected_0001_1000_Production_R7.xlsx",
-  "Nursing_Edge_Selected_1001_1500_Production_R7.xlsx",
-  "Nursing_Edge_Selected_1501_2000_Production_R7.xlsx",
-  "Nursing_Edge_Coverage_Supplement_4_Production_R7.xlsx",
-]);
+export type WorkbookRoleBasis = "AP_ITEMS" | "FILE_NAME" | "DEFAULT";
+
+export type WorkbookRole = {
+  role: RuntimeRoleName | null;
+  basis: WorkbookRoleBasis | null;
+  bound: boolean;
+  warning: string | null;
+};
+
+export type RelationshipImportResult = {
+  domains: RelationshipDomains;
+  workbook_role: WorkbookRole;
+};
+
+type DetectedRole =
+  | { role: RuntimeRoleName; basis: WorkbookRoleBasis; warning: string | null }
+  | { role: null; error: string };
+
+const AP_QUESTION_ROLE = "APPLIED_PATHOPHYSIOLOGY";
+const AP_NAME_TOKEN = /(^|[^A-Za-z])AP\d*([^A-Za-z]|$)/;
 
 const MAPPING_SHEETS = [
   "CJ_CLASSES",
@@ -81,18 +93,59 @@ function sourceBaseName(source: string): string {
   return base || "workbook.xlsx";
 }
 
-export function runtimeRoleForSource(source: string): RuntimeRoleName | null {
+/** AP_ITEMS decides AP. Otherwise "sibling" in the file name decides sibling. Everything else is clinical core. */
+export function detectWorkbookRole(
+  sheets: Map<string, SheetRow[]>,
+  source: string,
+): DetectedRole {
   const name = sourceBaseName(source);
-  if (name === SIBLING_WORKBOOK) {
-    return "CLINICAL_SIBLING_RESERVED";
+  const nameSaysSibling = /sibling/i.test(name);
+  const apItems = sheetRowsByName(sheets, "AP_ITEMS") ?? [];
+  if (apItems.length > 0) {
+    const error = apItemsError(apItems, sheetRowsByName(sheets, "QUESTIONS") ?? []);
+    if (error) {
+      return { role: null, error };
+    }
+    return {
+      role: "AP_REINFORCEMENT",
+      basis: "AP_ITEMS",
+      warning: nameSaysSibling
+        ? "The file name says Sibling, but AP_ITEMS marks these as physiology questions. Bound as AP."
+        : null,
+    };
   }
-  if (name === AP_WORKBOOK) {
-    return "AP_REINFORCEMENT";
+  if (nameSaysSibling) {
+    return { role: "CLINICAL_SIBLING_RESERVED", basis: "FILE_NAME", warning: null };
   }
-  if (CLINICAL_CORE_WORKBOOKS.has(name)) {
-    return "CLINICAL_CORE";
+  return {
+    role: "CLINICAL_CORE",
+    basis: "DEFAULT",
+    warning: AP_NAME_TOKEN.test(name)
+      ? "The file name looks like AP, but there is no AP_ITEMS sheet. Bound as clinical core."
+      : null,
+  };
+}
+
+function apItemsError(apItems: SheetRow[], questions: SheetRow[]): string | null {
+  const versions = new Set<string>();
+  for (const [index, row] of apItems.entries()) {
+    const role = (row.question_role ?? "").trim();
+    if (role !== AP_QUESTION_ROLE) {
+      return `AP_ITEMS row ${index + 1} has question_role ${role || "blank"}, not ${AP_QUESTION_ROLE}`;
+    }
+    versions.add((row.question_version ?? "").trim());
+  }
+  const missing = questions
+    .map((row) => (row.question_version ?? "").trim())
+    .filter((version) => version && !versions.has(version));
+  if (missing.length > 0) {
+    return `${missing.length} QUESTIONS rows are missing from AP_ITEMS, starting with ${missing[0]}`;
   }
   return null;
+}
+
+function hasRows(sheets: Map<string, SheetRow[]>, names: string[]): boolean {
+  return names.some((name) => (sheetRowsByName(sheets, name)?.length ?? 0) > 0);
 }
 
 export function stableJson(value: unknown): string {
@@ -324,28 +377,46 @@ export async function importWorkbookRelationships(input: {
   sheets: Map<string, SheetRow[]>;
   source: string;
   store: RelationshipStore | null;
-}): Promise<RelationshipDomains> {
+}): Promise<RelationshipImportResult> {
   const domains: RelationshipDomains = {
     mapping_and_exposure: emptyDomainCounts(),
     evidence_and_teaching: emptyDomainCounts(),
     runtime_binding: emptyDomainCounts(),
   };
-  const role = runtimeRoleForSource(input.source);
+  const detected = detectWorkbookRole(input.sheets, input.source);
+  const role = detected.role;
   const questions = sheetRowsByName(input.sheets, "QUESTIONS") ?? [];
+  const hasRelationshipSheets = hasRows(input.sheets, [
+    ...MAPPING_SHEETS,
+    ...TEACHING_SHEETS,
+  ]);
+  // A content-only workbook must leave stored mappings alone, so it gets no clinical core row.
+  const bindRole =
+    role === "CLINICAL_CORE" && !hasRelationshipSheets ? null : role;
+  const workbookRole: WorkbookRole =
+    "error" in detected
+      ? {
+          role: null,
+          basis: null,
+          bound: false,
+          warning: `${detected.error}. No role was bound.`,
+        }
+      : {
+          role: detected.role,
+          basis: detected.basis,
+          bound: bindRole !== null && questions.length > 0,
+          warning: detected.warning,
+        };
+  if ("error" in detected) {
+    fail(domains.runtime_binding, "AP_ITEMS", workbookRole.warning ?? detected.error);
+  }
+  const result = { domains, workbook_role: workbookRole };
   const needsStore =
-    (questions.length > 0 && role !== null) ||
-    MAPPING_SHEETS.some(
-      (name) => (sheetRowsByName(input.sheets, name)?.length ?? 0) > 0,
-    ) ||
-    TEACHING_SHEETS.some(
-      (name) => (sheetRowsByName(input.sheets, name)?.length ?? 0) > 0,
-    ) ||
-    (role === "AP_REINFORCEMENT" &&
-      PHYSIOLOGY_SHEETS.some(
-        (name) => (sheetRowsByName(input.sheets, name)?.length ?? 0) > 0,
-      ));
+    (questions.length > 0 && bindRole !== null) ||
+    hasRelationshipSheets ||
+    (role === "AP_REINFORCEMENT" && hasRows(input.sheets, PHYSIOLOGY_SHEETS));
   if (!needsStore) {
-    return domains;
+    return result;
   }
   if (!input.store) {
     throw new Error(
@@ -579,7 +650,7 @@ export async function importWorkbookRelationships(input: {
     }),
   });
 
-  if (sourceBaseName(input.source) === SIBLING_WORKBOOK) {
+  if (role === "CLINICAL_SIBLING_RESERVED") {
     await importSpecSheet(store, input.sheets, mapping, {
       sheet: "DEPENDENCY_RETIREMENTS",
       collection: "dependency_retirements",
@@ -605,7 +676,7 @@ export async function importWorkbookRelationships(input: {
     });
   }
 
-  if (sourceBaseName(input.source) === AP_WORKBOOK) {
+  if (role === "AP_REINFORCEMENT") {
     await importPhysiology(store, input.sheets, questions, mapping);
   }
 
@@ -669,8 +740,8 @@ export async function importWorkbookRelationships(input: {
     }),
   });
 
-  await importRoles(store, questions, role, domains.runtime_binding);
-  return domains;
+  await importRoles(store, questions, bindRole, domains.runtime_binding);
+  return result;
 }
 
 async function importPhysiology(

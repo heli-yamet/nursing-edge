@@ -165,6 +165,7 @@ export async function POST(req: Request) {
       batch: result.batch,
       lines: result.lines,
       domains: result.domains,
+      workbook_role: result.workbook_role,
       calibration,
     });
   } catch (error) {
