@@ -2,7 +2,11 @@ import {
   learnerTopicForName,
   topicKeyMismatch,
 } from "@/lib/learner-topics";
-import type { RelationshipKey, RelationshipStore } from "@/lib/relationship-store";
+import {
+  keySignature,
+  type RelationshipKey,
+  type RelationshipStore,
+} from "@/lib/relationship-store";
 import type { RuntimeRoleName } from "@/lib/relationship-types";
 import { sheetRowsByName, type SheetRow } from "@/lib/xlsx-rows";
 
@@ -63,6 +67,14 @@ const PHYSIOLOGY_SHEETS = [
   "AP_VARIANT_GROUPS",
 ];
 
+/** Every sheet this importer reads. The reader skips the rest. */
+export const RELATIONSHIP_SHEETS = [
+  ...MAPPING_SHEETS,
+  ...TEACHING_SHEETS,
+  "AP_ITEMS",
+  ...PHYSIOLOGY_SHEETS,
+];
+
 const AP_SUPPORT_STATUSES = new Set([
   "REVIEWED_CANDIDATE_NOT_APPROVED",
   "RETIRED_NOT_APPROVED",
@@ -82,6 +94,8 @@ type ReadyRow = {
 };
 
 type FieldKind = "id" | "text" | "int" | "bool" | "nullish";
+
+type RowCheck = (doc: Record<string, unknown>) => string | null;
 
 export function emptyDomainCounts(): DomainCounts {
   return { passed: 0, failed: 0, unchanged: 0, failures: [] };
@@ -250,21 +264,37 @@ async function commitRows(
   rows: ReadyRow[],
   domain: DomainCounts,
 ): Promise<void> {
+  const fields = Object.keys(rows[0]?.key ?? {});
   const groups = new Map<string, ReadyRow[]>();
   for (const row of rows) {
-    const id = stableJson(row.key);
+    const id = keySignature(row.key, fields);
     const group = groups.get(id) ?? [];
     group.push(row);
     groups.set(id, group);
   }
+  if (groups.size === 0) {
+    return;
+  }
 
-  for (const group of groups.values()) {
+  const storedById = new Map<string, string>();
+  const found = await store.findMany(
+    collection,
+    [...groups.values()].flatMap((group) => (group[0] ? [group[0].key] : [])),
+  );
+  for (const doc of found) {
+    const id = keySignature(doc, fields);
+    if (!storedById.has(id)) {
+      storedById.set(id, stableJson(doc));
+    }
+  }
+
+  const toInsert: Record<string, unknown>[] = [];
+  for (const [id, group] of groups) {
     const first = group[0];
     if (!first) {
       continue;
     }
-    const stored = await store.find(collection, first.key);
-    const storedJson = stored ? stableJson(stored) : null;
+    const storedJson = storedById.get(id) ?? null;
     const payloads = new Set(group.map((row) => stableJson(row.doc)));
 
     if (payloads.size > 1) {
@@ -298,10 +328,11 @@ async function commitRows(
       continue;
     }
 
-    await store.insert(collection, first.doc);
+    toInsert.push(first.doc);
     domain.passed += 1;
     domain.unchanged += group.length - 1;
   }
+  await store.insertMany(collection, toInsert);
 }
 
 function readSpec(
@@ -325,44 +356,61 @@ async function importSpecSheet(
     collection: string;
     spec: [string, FieldKind][];
     key: (doc: Record<string, unknown>) => RelationshipKey;
-    check?: (
-      doc: Record<string, unknown>,
-    ) => Promise<string | null>;
+    /** Loads what the sheet references once, then checks each row without a lookup. */
+    check?: (docs: Record<string, unknown>[]) => Promise<RowCheck>;
   },
 ): Promise<void> {
   const rows = sheetRowsByName(sheets, input.sheet);
   if (!rows) {
     return;
   }
-  const ready: ReadyRow[] = [];
+  const parsed: { fallback: string; doc: Record<string, unknown> }[] = [];
   for (const [index, row] of rows.entries()) {
-    const parsed = readSpec(row, input.spec);
+    const read = readSpec(row, input.spec);
     const fallback = `${input.sheet} row ${index + 1}`;
-    if ("error" in parsed) {
-      fail(domain, fallback, parsed.error);
+    if ("error" in read) {
+      fail(domain, fallback, read.error);
       continue;
     }
-    const refError = input.check ? await input.check(parsed.doc) : null;
+    parsed.push({ fallback, doc: read.doc });
+  }
+  const check = input.check
+    ? await input.check(parsed.map((item) => item.doc))
+    : null;
+  const ready: ReadyRow[] = [];
+  for (const { fallback, doc } of parsed) {
+    const refError = check ? check(doc) : null;
     if (refError) {
       fail(domain, fallback, refError);
       continue;
     }
-    const key = input.key(parsed.doc);
+    const key = input.key(doc);
     ready.push({
       label: `${input.sheet} ${Object.values(key).join(" ")}`,
       key,
-      doc: parsed.doc,
+      doc,
     });
   }
   await commitRows(store, input.collection, ready, domain);
 }
 
-async function exists(
+/** One query for every key a sheet references. Keys must share fields. */
+async function knownKeys(
   store: RelationshipStore,
   collection: string,
-  key: RelationshipKey,
-): Promise<boolean> {
-  return (await store.find(collection, key)) !== null;
+  keys: RelationshipKey[],
+): Promise<(key: RelationshipKey) => boolean> {
+  const fields = Object.keys(keys[0] ?? {});
+  const unique = new Map<string, RelationshipKey>();
+  for (const key of keys) {
+    unique.set(keySignature(key, fields), key);
+  }
+  const found = new Set(
+    (await store.findMany(collection, [...unique.values()])).map((doc) =>
+      keySignature(doc, fields),
+    ),
+  );
+  return (key) => found.has(keySignature(key, fields));
 }
 
 function textKey(doc: Record<string, unknown>, field: string): string {
@@ -448,10 +496,14 @@ export async function importWorkbookRelationships(input: {
       ["definition", "text"],
     ],
     key: (doc) => ({ judgment_id: textKey(doc, "judgment_id") }),
-    check: async (doc) =>
-      (await exists(store, "cj_classes", { class_id: textKey(doc, "class_id") }))
-        ? null
-        : `missing cj class ${textKey(doc, "class_id")}`,
+    check: async (docs) => {
+      const classKey = (doc: Record<string, unknown>) => ({
+        class_id: textKey(doc, "class_id"),
+      });
+      const classes = await knownKeys(store, "cj_classes", docs.map(classKey));
+      return (doc) =>
+        classes(classKey(doc)) ? null : `missing cj class ${textKey(doc, "class_id")}`;
+    },
   });
 
   await importSpecSheet(store, input.sheets, mapping, {
@@ -476,12 +528,13 @@ export async function importWorkbookRelationships(input: {
       family_id: textKey(doc, "family_id"),
       family_revision: numberKey(doc, "family_revision"),
     }),
-    check: async (doc) =>
-      (await exists(store, "judgments", {
-        judgment_id: textKey(doc, "primary_judgment_id"),
-      }))
-        ? null
-        : `missing judgment ${textKey(doc, "primary_judgment_id")}`,
+    check: async (docs) => {
+      const judgments = await knownKeys(store, "judgments", docs.map(judgmentKey));
+      return (doc) =>
+        judgments(judgmentKey(doc))
+          ? null
+          : `missing judgment ${textKey(doc, "primary_judgment_id")}`;
+    },
   });
 
   await importSpecSheet(store, input.sheets, mapping, {
@@ -556,7 +609,7 @@ export async function importWorkbookRelationships(input: {
       map_id: textKey(doc, "map_id"),
       map_revision: numberKey(doc, "map_revision"),
     }),
-    check: (doc) => mapReferenceError(store, doc),
+    check: (docs) => mapReferenceCheck(store, docs),
   });
 
   await importSpecSheet(store, input.sheets, mapping, {
@@ -612,13 +665,15 @@ export async function importWorkbookRelationships(input: {
       evaluation_id: textKey(doc, "evaluation_id"),
       evaluation_revision: numberKey(doc, "evaluation_revision"),
     }),
-    check: async (doc) =>
-      (await exists(store, "transfer_links", {
+    check: async (docs) => {
+      const linkKey = (doc: Record<string, unknown>) => ({
         link_id: textKey(doc, "link_id"),
         link_revision: numberKey(doc, "link_revision"),
-      }))
-        ? null
-        : `missing transfer link ${textKey(doc, "link_id")}`,
+      });
+      const links = await knownKeys(store, "transfer_links", docs.map(linkKey));
+      return (doc) =>
+        links(linkKey(doc)) ? null : `missing transfer link ${textKey(doc, "link_id")}`;
+    },
   });
 
   await importSpecSheet(store, input.sheets, mapping, {
@@ -824,52 +879,53 @@ async function importPhysiology(
       support_link_id: textKey(doc, "support_link_id"),
       link_revision: numberKey(doc, "link_revision"),
     }),
-    check: (doc) => supportLinkError(store, doc, apQuestions),
+    check: (docs) => supportLinkCheck(store, docs, apQuestions),
   });
 
   await importApVariantGroups(store, sheets, apQuestions, domain);
 }
 
-async function supportLinkError(
+async function supportLinkCheck(
   store: RelationshipStore,
-  doc: Record<string, unknown>,
+  docs: Record<string, unknown>[],
   apQuestions: Map<string, string>,
-): Promise<string | null> {
-  const status = textKey(doc, "status");
-  if (!AP_SUPPORT_STATUSES.has(status)) {
-    return `invalid status ${status}`;
-  }
-  if (doc.approval_json !== null) {
-    return "approval_json must stay null";
-  }
-  const relationship = textKey(doc, "relationship_type");
-  if (relationship !== "AP_MECHANISM_SUPPORT") {
-    return `invalid relationship type ${relationship}`;
-  }
-  const trigger = textKey(doc, "trigger_scope");
-  if (trigger !== "ITEM") {
-    return `invalid trigger scope ${trigger}`;
-  }
-  const mechanismId = textKey(doc, "mechanism_id");
-  const mechanismRevision = numberKey(doc, "mechanism_revision");
-  if (
-    !(await exists(store, "mechanisms", {
-      mechanism_id: mechanismId,
-      mechanism_revision: mechanismRevision,
-    }))
-  ) {
-    return `missing mechanism ${mechanismId} revision ${mechanismRevision}`;
-  }
-  const apId = textKey(doc, "ap_permanent_item_id");
-  const apVersion = textKey(doc, "ap_question_version");
-  const expected = apQuestions.get(apId);
-  if (!expected) {
-    return `missing AP question ${apId}`;
-  }
-  if (expected !== apVersion) {
-    return `mismatched question version ${apVersion}`;
-  }
-  return null;
+): Promise<RowCheck> {
+  const mechanismKey = (doc: Record<string, unknown>) => ({
+    mechanism_id: textKey(doc, "mechanism_id"),
+    mechanism_revision: numberKey(doc, "mechanism_revision"),
+  });
+  const mechanisms = await knownKeys(store, "mechanisms", docs.map(mechanismKey));
+  return (doc) => {
+    const status = textKey(doc, "status");
+    if (!AP_SUPPORT_STATUSES.has(status)) {
+      return `invalid status ${status}`;
+    }
+    if (doc.approval_json !== null) {
+      return "approval_json must stay null";
+    }
+    const relationship = textKey(doc, "relationship_type");
+    if (relationship !== "AP_MECHANISM_SUPPORT") {
+      return `invalid relationship type ${relationship}`;
+    }
+    const trigger = textKey(doc, "trigger_scope");
+    if (trigger !== "ITEM") {
+      return `invalid trigger scope ${trigger}`;
+    }
+    const mechanism = mechanismKey(doc);
+    if (!mechanisms(mechanism)) {
+      return `missing mechanism ${mechanism.mechanism_id} revision ${mechanism.mechanism_revision}`;
+    }
+    const apId = textKey(doc, "ap_permanent_item_id");
+    const apVersion = textKey(doc, "ap_question_version");
+    const expected = apQuestions.get(apId);
+    if (!expected) {
+      return `missing AP question ${apId}`;
+    }
+    if (expected !== apVersion) {
+      return `mismatched question version ${apVersion}`;
+    }
+    return null;
+  };
 }
 
 function variantMembers(
@@ -991,45 +1047,60 @@ async function importApVariantGroups(
   await commitRows(store, "ap_variant_groups", ready, domain);
 }
 
-async function mapReferenceError(
-  store: RelationshipStore,
-  doc: Record<string, unknown>,
-): Promise<string | null> {
-  const familyId = textKey(doc, "family_id");
-  const familyRevision = numberKey(doc, "family_revision");
-  if (
-    !(await exists(store, "families", {
-      family_id: familyId,
-      family_revision: familyRevision,
-    }))
-  ) {
-    return `missing family ${familyId} revision ${familyRevision}`;
-  }
-  const judgmentId = textKey(doc, "primary_judgment_id");
-  if (!(await exists(store, "judgments", { judgment_id: judgmentId }))) {
-    return `missing judgment ${judgmentId}`;
-  }
-  const contextId = textKey(doc, "context_id");
-  const contextRevision = numberKey(doc, "context_revision");
-  if (
-    !(await exists(store, "contexts", {
-      context_id: contextId,
-      context_revision: contextRevision,
-    }))
-  ) {
-    return `missing context ${contextId} revision ${contextRevision}`;
-  }
+function judgmentKey(doc: Record<string, unknown>): RelationshipKey {
+  return { judgment_id: textKey(doc, "primary_judgment_id") };
+}
+
+function variantGroupKey(doc: Record<string, unknown>): RelationshipKey | null {
   const variantGroupId = doc.variant_group_id;
-  if (typeof variantGroupId === "string" && variantGroupId) {
-    if (
-      !(await exists(store, "variant_groups", {
-        variant_group_id: variantGroupId,
-      }))
-    ) {
-      return `missing variant group ${variantGroupId}`;
+  return typeof variantGroupId === "string" && variantGroupId
+    ? { variant_group_id: variantGroupId }
+    : null;
+}
+
+async function mapReferenceCheck(
+  store: RelationshipStore,
+  docs: Record<string, unknown>[],
+): Promise<RowCheck> {
+  const familyKey = (doc: Record<string, unknown>) => ({
+    family_id: textKey(doc, "family_id"),
+    family_revision: numberKey(doc, "family_revision"),
+  });
+  const contextKey = (doc: Record<string, unknown>) => ({
+    context_id: textKey(doc, "context_id"),
+    context_revision: numberKey(doc, "context_revision"),
+  });
+  const [families, judgments, contexts, variantGroups] = await Promise.all([
+    knownKeys(store, "families", docs.map(familyKey)),
+    knownKeys(store, "judgments", docs.map(judgmentKey)),
+    knownKeys(store, "contexts", docs.map(contextKey)),
+    knownKeys(
+      store,
+      "variant_groups",
+      docs.flatMap((doc) => {
+        const key = variantGroupKey(doc);
+        return key ? [key] : [];
+      }),
+    ),
+  ]);
+  return (doc) => {
+    const family = familyKey(doc);
+    if (!families(family)) {
+      return `missing family ${family.family_id} revision ${family.family_revision}`;
     }
-  }
-  return null;
+    if (!judgments(judgmentKey(doc))) {
+      return `missing judgment ${textKey(doc, "primary_judgment_id")}`;
+    }
+    const context = contextKey(doc);
+    if (!contexts(context)) {
+      return `missing context ${context.context_id} revision ${context.context_revision}`;
+    }
+    const variantGroup = variantGroupKey(doc);
+    if (variantGroup && !variantGroups(variantGroup)) {
+      return `missing variant group ${variantGroup.variant_group_id}`;
+    }
+    return null;
+  };
 }
 
 async function importTopicRegistry(

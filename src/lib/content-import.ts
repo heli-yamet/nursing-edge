@@ -1,8 +1,9 @@
 import type { ContentStore } from "@/lib/content-store";
-import { parseC2Sheets } from "@/lib/c2-parse";
+import { C2_CONTENT_SHEETS, parseC2Sheets } from "@/lib/c2-parse";
 import {
   emptyDomainCounts,
   importWorkbookRelationships,
+  RELATIONSHIP_SHEETS,
   type DomainCounts,
   type RelationshipDomains,
   type WorkbookRole,
@@ -59,7 +60,10 @@ export async function importC2Buffer(
   source: string,
   relationships?: RelationshipStore | null,
 ): Promise<ContentImportResult> {
-  const sheets = await readXlsxSheetRows(buffer);
+  const sheets = await readXlsxSheetRows(buffer, [
+    ...C2_CONTENT_SHEETS,
+    ...RELATIONSHIP_SHEETS,
+  ]);
   const records = parseC2Sheets(sheets);
   const staged = await stageImport(store, { records, source });
   const relationshipResult = await importWorkbookRelationships({

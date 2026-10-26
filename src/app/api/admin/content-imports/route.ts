@@ -116,8 +116,7 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log("downloaded", downloaded);
-
+    const startedAt = Date.now();
     const bytes = Buffer.from(await new Response(downloaded.stream).arrayBuffer());
     const inspected = inspectContentImportFile({
       fileName,
@@ -131,19 +130,26 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log("bytes", bytes.length);
-    console.log("inspected", inspected);
-
     const store = await createMongoContentStore();
     const relationships = await createMongoRelationshipStore();
-    console.log("database connected");
     const result = await importC2Buffer(
       store,
       bytes,
       inspected.source,
       relationships,
     );
-    console.log("result", result);
+    console.log("content import", {
+      source: inspected.source,
+      bytes: bytes.byteLength,
+      ms: Date.now() - startedAt,
+      lines: result.lines.length,
+      domains: Object.fromEntries(
+        Object.entries(result.domains).map(([name, counts]) => [
+          name,
+          { passed: counts.passed, failed: counts.failed, unchanged: counts.unchanged },
+        ]),
+      ),
+    });
     const purpose = payload.purpose === "calibration" ? "calibration" : "bank";
     let calibration: {
       ok: boolean;

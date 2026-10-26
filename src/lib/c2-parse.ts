@@ -53,6 +53,15 @@ function groupByVersion(rows: SheetRow[]): Map<string, SheetRow[]> {
   return grouped;
 }
 
+/** Every sheet `parseC2Sheets` reads. */
+export const C2_CONTENT_SHEETS = [
+  "QUESTIONS",
+  "OPTIONS",
+  "RATIONALES",
+  "REVIEW_TEACHING",
+  "TOPIC_BINDINGS",
+];
+
 export function parseC2Sheets(
   sheets: Map<string, SheetRow[]>,
 ): ImportQuestionInput[] {

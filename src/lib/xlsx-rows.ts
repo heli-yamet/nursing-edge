@@ -172,9 +172,14 @@ async function readZipFile(
   return entry.async("string");
 }
 
+/** With `onlySheets`, other sheets are not parsed. Names match without case. */
 export async function readXlsxSheetRows(
   buffer: Buffer,
+  onlySheets?: string[],
 ): Promise<Map<string, SheetRow[]>> {
+  const wanted = onlySheets
+    ? new Set(onlySheets.map((name) => name.trim().toUpperCase()))
+    : null;
   let zip: JSZip;
   try {
     zip = await JSZip.loadAsync(buffer);
@@ -209,7 +214,7 @@ export async function readXlsxSheetRows(
     const attrs = sheetMatch[1] ?? "";
     const name = attr(attrs, "name");
     const target = relTargets.get(relationshipId(attrs));
-    if (name && target) {
+    if (name && target && (!wanted || wanted.has(name.trim().toUpperCase()))) {
       const sheetXml = (await readZipFile(zip, target)) ?? "";
       sheets.set(name, parseSheetData(sheetXml, sharedStrings));
     }
