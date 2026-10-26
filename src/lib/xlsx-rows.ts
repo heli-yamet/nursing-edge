@@ -81,7 +81,7 @@ function cellValue(
   sharedStrings: string[],
 ): string {
   const type = attr(attrs, "t").toLowerCase();
-  if (type === "inlineStr") {
+  if (type === "inlinestr") {
     return collectTextNodes(inner).trim();
   }
 
