@@ -5,6 +5,7 @@ import {
   importWorkbookRelationships,
   RELATIONSHIP_SHEETS,
   type DomainCounts,
+  type ImportPurpose,
   type RelationshipDomains,
   type WorkbookRole,
 } from "@/lib/relationship-import";
@@ -59,6 +60,7 @@ export async function importC2Buffer(
   buffer: Buffer,
   source: string,
   relationships?: RelationshipStore | null,
+  options: { purpose?: ImportPurpose } = {},
 ): Promise<ContentImportResult> {
   const sheets = await readXlsxSheetRows(buffer, [
     ...C2_CONTENT_SHEETS,
@@ -70,6 +72,11 @@ export async function importC2Buffer(
     sheets,
     source,
     store: relationships ?? null,
+    purpose: options.purpose ?? "bank",
+    storedVersionIds: staged.lines
+      .filter((line) => line.outcome === "PASSED" || line.outcome === "UNCHANGED")
+      .map((line) => line.question_version_id)
+      .filter((id) => id.trim() !== ""),
   });
   return {
     ...staged,

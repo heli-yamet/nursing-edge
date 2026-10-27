@@ -14,6 +14,8 @@ export type RelationshipStore = {
   ): Promise<Record<string, unknown>[]>;
   insert(collection: string, doc: Record<string, unknown>): Promise<void>;
   insertMany(collection: string, docs: Record<string, unknown>[]): Promise<void>;
+  /** Every key in one call must use the same fields. Returns how many were removed. */
+  deleteMany(collection: string, keys: RelationshipKey[]): Promise<number>;
 };
 
 export type MemoryRelationshipStore = RelationshipStore & {
@@ -76,6 +78,18 @@ export function createMemoryRelationshipStore(): MemoryRelationshipStore {
       rows.push(...items.map((doc) => ({ ...doc })));
       docs.set(collection, rows);
     },
+    async deleteMany(collection, keys) {
+      if (keys.length === 0) {
+        return 0;
+      }
+      store.roundTrips += 1;
+      const fields = Object.keys(keys[0] ?? {});
+      const wanted = new Set(keys.map((key) => keySignature(key, fields)));
+      const rows = docs.get(collection) ?? [];
+      const kept = rows.filter((doc) => !wanted.has(keySignature(doc, fields)));
+      docs.set(collection, kept);
+      return rows.length - kept.length;
+    },
   };
   return store;
 }
@@ -118,6 +132,21 @@ export async function createMongoRelationshipStore(): Promise<RelationshipStore>
         const chunk = docs.slice(start, start + INSERT_CHUNK).map((doc) => ({ ...doc }));
         await db.collection(collection).insertMany(chunk, { ordered: true });
       }
+    },
+    async deleteMany(collection, keys) {
+      let removed = 0;
+      const fields = Object.keys(keys[0] ?? {});
+      for (let start = 0; start < keys.length; start += FIND_CHUNK) {
+        const chunk = keys.slice(start, start + FIND_CHUNK);
+        const field = fields[0];
+        const filter =
+          fields.length === 1 && field
+            ? { [field]: { $in: chunk.map((key) => key[field]) } }
+            : { $or: chunk };
+        const result = await db.collection(collection).deleteMany(filter);
+        removed += result.deletedCount;
+      }
+      return removed;
     },
   };
 }

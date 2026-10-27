@@ -2,8 +2,10 @@ import { del, get } from "@vercel/blob";
 import { emptyAdminCors, jsonWithAdminCors } from "@/lib/admin-http";
 import { requireActiveAdmin } from "@/lib/admin-request";
 import {
+  calibrationQuestionIds,
+  calibrationVersionIdsFor,
   getActiveCalibrationBlueprint,
-  reservedCalibrationVersionIds,
+  markCalibrationUploads,
   saveCalibrationBlueprint,
   uniqueSuccessfulVersionIds,
 } from "@/lib/calibration-blueprint";
@@ -40,12 +42,12 @@ export async function GET(req: Request) {
       return jsonWithAdminCors(req, { ok: true, lines });
     }
 
-    const [batches, imported, versions, reserved, blueprint, practiceBarred, roles] =
+    const [batches, imported, versions, calibrationIds, blueprint, practiceBarred, roles] =
       await Promise.all([
         store.listBatches(),
         store.listImportedQuestions(),
         store.listQuestionVersions(),
-        reservedCalibrationVersionIds(),
+        calibrationQuestionIds(),
         getActiveCalibrationBlueprint(),
         practiceBarredVersionIds(),
         (await runtimeRoles())
@@ -58,12 +60,18 @@ export async function GET(req: Request) {
     const roleByVersion = new Map(
       roles.map((role) => [role.question_version_id, role.role]),
     );
+    const onBlueprint = new Set(blueprint?.question_version_ids ?? []);
+    const reserved = calibrationVersionIdsFor(versions, calibrationIds);
+    for (const question_version_id of onBlueprint) {
+      reserved.add(question_version_id);
+    }
     return jsonWithAdminCors(req, {
       ok: true,
       batches: batches.slice().reverse(),
       questions: imported.map((question) => ({
         ...question,
-        on_calibration_blueprint: reserved.has(question.question_version_id),
+        on_calibration_blueprint: onBlueprint.has(question.question_version_id),
+        calibration_question: reserved.has(question.question_version_id),
         role: roleByVersion.get(question.question_version_id) ?? null,
       })),
       eligibility: buildEligibilityReport(versions, reserved, practiceBarred),
@@ -130,6 +138,7 @@ export async function POST(req: Request) {
       );
     }
 
+    const purpose = payload.purpose === "calibration" ? "calibration" : "bank";
     const store = await createMongoContentStore();
     const relationships = await createMongoRelationshipStore();
     const result = await importC2Buffer(
@@ -137,6 +146,7 @@ export async function POST(req: Request) {
       bytes,
       inspected.source,
       relationships,
+      { purpose },
     );
     console.log("content import", {
       source: inspected.source,
@@ -150,12 +160,15 @@ export async function POST(req: Request) {
         ]),
       ),
     });
-    const purpose = payload.purpose === "calibration" ? "calibration" : "bank";
     let calibration: {
       ok: boolean;
       reason: string | null;
     } | null = null;
     if (purpose === "calibration") {
+      await markCalibrationUploads({
+        lines: result.lines,
+        batchId: result.batch.batch_id,
+      });
       const saved = await saveCalibrationBlueprint({
         questionVersionIds: uniqueSuccessfulVersionIds(result.lines),
         actorAdminId: auth.admin.admin_id,

@@ -23,7 +23,14 @@ export type RelationshipDomains = {
   runtime_binding: DomainCounts;
 };
 
-export type WorkbookRoleBasis = "AP_ITEMS" | "FILE_NAME" | "DEFAULT";
+export type WorkbookRoleBasis =
+  | "AP_ITEMS"
+  | "FILE_NAME"
+  | "DEFAULT"
+  | "CALIBRATION_UPLOAD";
+
+/** "Upload and stage" is `bank`. "Upload as Calibration" is `calibration`. */
+export type ImportPurpose = "bank" | "calibration";
 
 export type WorkbookRole = {
   role: RuntimeRoleName | null;
@@ -40,6 +47,10 @@ export type RelationshipImportResult = {
 type DetectedRole =
   | { role: RuntimeRoleName; basis: WorkbookRoleBasis; warning: string | null }
   | { role: null; error: string };
+
+type ResolvedRole =
+  | DetectedRole
+  | { role: null; basis: "CALIBRATION_UPLOAD"; warning: string | null };
 
 const AP_QUESTION_ROLE = "APPLIED_PATHOPHYSIOLOGY";
 const AP_NAME_TOKEN = /(^|[^A-Za-z])AP\d*([^A-Za-z]|$)/;
@@ -425,13 +436,20 @@ export async function importWorkbookRelationships(input: {
   sheets: Map<string, SheetRow[]>;
   source: string;
   store: RelationshipStore | null;
+  purpose?: ImportPurpose;
+  /** Calibration only: the versions the content import stored. Their role rows are removed. */
+  storedVersionIds?: readonly string[];
 }): Promise<RelationshipImportResult> {
   const domains: RelationshipDomains = {
     mapping_and_exposure: emptyDomainCounts(),
     evidence_and_teaching: emptyDomainCounts(),
     runtime_binding: emptyDomainCounts(),
   };
-  const detected = detectWorkbookRole(input.sheets, input.source);
+  const calibration = input.purpose === "calibration";
+  const clearVersionIds = calibration ? [...new Set(input.storedVersionIds ?? [])] : [];
+  const detected: ResolvedRole = calibration
+    ? { role: null, basis: "CALIBRATION_UPLOAD", warning: null }
+    : detectWorkbookRole(input.sheets, input.source);
   const role = detected.role;
   const questions = sheetRowsByName(input.sheets, "QUESTIONS") ?? [];
   const hasRelationshipSheets = hasRows(input.sheets, [
@@ -461,6 +479,7 @@ export async function importWorkbookRelationships(input: {
   const result = { domains, workbook_role: workbookRole };
   const needsStore =
     (questions.length > 0 && bindRole !== null) ||
+    clearVersionIds.length > 0 ||
     hasRelationshipSheets ||
     (role === "AP_REINFORCEMENT" && hasRows(input.sheets, PHYSIOLOGY_SHEETS));
   if (!needsStore) {
@@ -795,8 +814,41 @@ export async function importWorkbookRelationships(input: {
     }),
   });
 
+  if (calibration) {
+    const removed = await clearRoles(store, clearVersionIds, domains.runtime_binding);
+    if (removed > 0) {
+      workbookRole.warning = `Removed the earlier role from ${removed} question${
+        removed === 1 ? "" : "s"
+      }.`;
+    }
+    return result;
+  }
   await importRoles(store, questions, bindRole, domains.runtime_binding);
   return result;
+}
+
+/** Calibration questions carry no runtime role. A removed row counts as passed, a missing one as unchanged. */
+async function clearRoles(
+  store: RelationshipStore,
+  versionIds: string[],
+  domain: DomainCounts,
+): Promise<number> {
+  if (versionIds.length === 0) {
+    return 0;
+  }
+  const keys = versionIds.map((question_version_id) => ({ question_version_id }));
+  const existing = await store.findMany("runtime_roles", keys);
+  const held = new Set(existing.map((doc) => String(doc.question_version_id)));
+  const removed =
+    held.size === 0
+      ? 0
+      : await store.deleteMany(
+          "runtime_roles",
+          [...held].map((question_version_id) => ({ question_version_id })),
+        );
+  domain.passed += removed;
+  domain.unchanged += versionIds.length - held.size;
+  return removed;
 }
 
 async function importPhysiology(

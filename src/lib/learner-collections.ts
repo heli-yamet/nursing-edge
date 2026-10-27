@@ -11,6 +11,7 @@ import type {
   DeleteAudit,
   Calibration,
   CalibrationBlueprint,
+  CalibrationUpload,
   Learner,
   Question,
   QuestionVersion,
@@ -64,6 +65,10 @@ export async function calibrationBlueprints() {
   return (await getDb()).collection<CalibrationBlueprint>(
     "calibration_blueprints",
   );
+}
+
+export async function calibrationUploads() {
+  return (await getDb()).collection<CalibrationUpload>("calibration_uploads");
 }
 
 export async function calibrations() {

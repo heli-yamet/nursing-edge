@@ -314,3 +314,11 @@ export type CalibrationBlueprint = {
   actor_admin_id: string | null;
   created_at: Date;
 };
+
+/** A version that arrived through "Upload as Calibration", whether or not a blueprint was saved. */
+export type CalibrationUpload = {
+  question_version_id: string;
+  question_id: string;
+  batch_id: string;
+  marked_at: Date;
+};

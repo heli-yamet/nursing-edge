@@ -1,4 +1,8 @@
-import { getActiveCalibrationBlueprint } from "@/lib/calibration-blueprint";
+import {
+  calibrationQuestionIds,
+  calibrationVersionIdsFor,
+  getActiveCalibrationBlueprint,
+} from "@/lib/calibration-blueprint";
 import {
   planCalibrationAssignment,
   practiceEntryView,
@@ -51,18 +55,23 @@ type PracticeContent = {
 };
 
 async function readPracticeContent(): Promise<PracticeContent> {
-  const [published, questionRows, blueprint, practiceBarred] = await Promise.all([
-    (await questionVersions())
-      .find({ publication_status: "PUBLISHED" }, { projection: { _id: 0 } })
-      .toArray(),
-    (await questions()).find({}, { projection: { _id: 0 } }).toArray(),
-    getActiveCalibrationBlueprint(),
-    practiceBarredVersionIds(),
-  ]);
+  const [published, questionRows, blueprint, practiceBarred, calibrationIds] =
+    await Promise.all([
+      (await questionVersions())
+        .find({ publication_status: "PUBLISHED" }, { projection: { _id: 0 } })
+        .toArray(),
+      (await questions()).find({}, { projection: { _id: 0 } }).toArray(),
+      getActiveCalibrationBlueprint(),
+      practiceBarredVersionIds(),
+      calibrationQuestionIds(),
+    ]);
   const questionMap = new Map<string, Question>(
     questionRows.map((question) => [question.question_id, question]),
   );
-  const reserved = new Set(blueprint?.question_version_ids ?? []);
+  const reserved = calibrationVersionIdsFor(published, calibrationIds);
+  for (const question_version_id of blueprint?.question_version_ids ?? []) {
+    reserved.add(question_version_id);
+  }
   return {
     published,
     blueprint,
