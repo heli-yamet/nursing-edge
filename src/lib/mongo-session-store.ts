@@ -4,11 +4,17 @@ import {
   type EndSessionResult,
   type EndSessionStore,
 } from "@/lib/end-session";
-import { attempts, calibrations, sessions } from "@/lib/learner-collections";
+import {
+  attempts,
+  calibrations,
+  findAttemptsBySession,
+  sessions,
+} from "@/lib/learner-collections";
 import { runInTransaction } from "@/lib/mongo";
 import type { ClientSession } from "mongodb";
 import type { SessionType } from "@/lib/learner-types";
 import type { SessionStore } from "@/lib/practice-session";
+import { sessionResults, type SessionResults } from "@/lib/session-results";
 
 function duplicateKey(error: unknown): Record<string, unknown> | null | false {
   if (typeof error !== "object" || error === null || !("code" in error)) {
@@ -130,13 +136,10 @@ export async function endLearnerSession(
   });
 }
 
-export async function readLatestEndedSummary(
+export async function readLatestEndedResults(
   learnerId: string,
   types: SessionType[] = ["PRACTICE", "CALIBRATION"],
-): Promise<{
-  submitted: number;
-  size: number;
-} | null> {
+): Promise<SessionResults | null> {
   const ended = await (await sessions()).findOne(
     {
       learner_id: learnerId,
@@ -144,15 +147,18 @@ export async function readLatestEndedSummary(
       type: { $in: types },
     },
     {
-      projection: { _id: 0, session_id: 1, assigned_versions: 1 },
+      projection: {
+        _id: 0,
+        session_id: 1,
+        learner_id: 1,
+        type: 1,
+        assigned_versions: 1,
+      },
       sort: { created_at: -1 },
     },
   );
   if (!ended) {
     return null;
   }
-  const submitted = await (await attempts()).countDocuments({
-    session_id: ended.session_id,
-  });
-  return { submitted, size: ended.assigned_versions.length };
+  return sessionResults(ended, await findAttemptsBySession(ended.session_id));
 }
