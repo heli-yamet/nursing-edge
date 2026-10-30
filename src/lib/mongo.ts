@@ -23,7 +23,7 @@ function getClientPromise(): Promise<MongoClient> {
 
 export async function getDb(): Promise<Db> {
   const client = await getClientPromise();
-  const db = client.db();
+  const db = client.db("prod");
   const globalMongo = globalThis as GlobalMongo;
   if (!globalMongo._schemaIndexes) {
     globalMongo._schemaIndexes = ensureIndexes(db);
