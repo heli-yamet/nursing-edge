@@ -120,6 +120,15 @@ export async function findAttemptsByLearner(
     .toArray();
 }
 
+export async function findFullAttemptsByLearner(
+  learner_id: string,
+): Promise<Attempt[]> {
+  return (await attempts())
+    .find({ learner_id }, { projection: { _id: 0 } })
+    .sort({ sequence: 1, committed_at: 1 })
+    .toArray();
+}
+
 export async function findAttemptsBySession(
   session_id: string,
 ): Promise<Attempt[]> {

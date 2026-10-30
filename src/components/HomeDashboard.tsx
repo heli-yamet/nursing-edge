@@ -7,6 +7,8 @@ import {
   type HomeActionId,
 } from "@/lib/session-rules";
 import type { SessionType } from "@/lib/learner-types";
+import type { ReviewOutlook } from "@/lib/review-outlook";
+import { WhatHappensNext } from "@/components/WhatHappensNext";
 
 export type HomeSessionCard = {
   type: SessionType;
@@ -31,10 +33,12 @@ export function HomeDashboard({
   firstName,
   session,
   reviewDue,
+  outlook,
 }: {
   firstName: string;
   session: HomeSessionCard | null;
   reviewDue: boolean;
+  outlook: ReviewOutlook;
 }) {
   const order = homeActionOrder({
     hasActiveSession: session !== null,
@@ -164,6 +168,8 @@ export function HomeDashboard({
           ))}
         </div>
       </section>
+
+      <WhatHappensNext outlook={outlook} className="mt-5" />
 
       <section className="mt-5 flex items-start gap-4 rounded-[20px] border border-[#D7EEEE] bg-[#F3FAFA] px-5 py-4 sm:items-center">
         <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#E4F4F4] text-[#4BB8BC]">

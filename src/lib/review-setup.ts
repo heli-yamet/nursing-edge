@@ -10,6 +10,7 @@ import { loadApprovedReviewOffers } from "@/lib/review-offers";
 import { maps } from "@/lib/relationship-collections";
 import { ALL_TOPICS, isPracticeScope } from "@/lib/practice-options";
 import { createMongoSessionStore } from "@/lib/mongo-session-store";
+import { reviewOutlook, type ReviewOutlook } from "@/lib/review-outlook";
 import { isDueReviewCycle, isReviewStage, isSixState } from "@/lib/review-rules";
 import {
   previewDueReview,
@@ -48,6 +49,28 @@ export async function learnerHasDueReview(
     { projection: { _id: 1 } },
   );
   return cycle !== null;
+}
+
+export async function readReviewOutlook(
+  learnerId: string,
+  now: Date = new Date(),
+): Promise<ReviewOutlook> {
+  const cycles = await (
+    await reviewCycles()
+  )
+    .find(
+      { learner_id: learnerId },
+      {
+        projection: {
+          _id: 0,
+          state: 1,
+          due_at: 1,
+          active_window_expires_at: 1,
+        },
+      },
+    )
+    .toArray();
+  return reviewOutlook(cycles, now);
 }
 
 export async function loadDueOwnerSources(

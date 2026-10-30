@@ -8,6 +8,9 @@ export const systemClock: Clock = {
 
 export const REVIEW_ACTIVE_WINDOW_MS = 14 * 60 * 1000;
 
+/** The last day of the 14-day review window. Follows the compressed window length. */
+export const REVIEW_EXPIRY_NEAR_MS = REVIEW_ACTIVE_WINDOW_MS / 14;
+
 export function createFakeClock(start: Date) {
   let current = new Date(start.getTime());
 
