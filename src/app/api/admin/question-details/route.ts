@@ -1,6 +1,10 @@
 import { emptyAdminCors, jsonWithAdminCors } from "@/lib/admin-http";
 import { requireActiveAdmin } from "@/lib/admin-request";
 import { loadQuestionDetail } from "@/lib/question-detail";
+import {
+  loadQuestionAdminMeta,
+  loadQuestionUsage,
+} from "@/lib/question-usage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,15 +29,19 @@ export async function GET(req: Request) {
         400,
       );
     }
-    const detail = await loadQuestionDetail(questionVersionId);
-    if (!detail) {
+    const [detail, meta, usage] = await Promise.all([
+      loadQuestionDetail(questionVersionId),
+      loadQuestionAdminMeta(questionVersionId),
+      loadQuestionUsage(questionVersionId),
+    ]);
+    if (!detail || !meta) {
       return jsonWithAdminCors(
         req,
         { ok: false, reason: "That question is not stored." },
         404,
       );
     }
-    return jsonWithAdminCors(req, { ok: true, detail });
+    return jsonWithAdminCors(req, { ok: true, detail: { ...detail, meta, usage } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "server_error";
     return jsonWithAdminCors(req, { ok: false, error: message }, 500);
