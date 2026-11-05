@@ -70,6 +70,15 @@ export type ReviewTeaching = {
 
 export type ReviewAssignmentKind = "owner" | "alternate" | "support";
 
+/** Due clinical owner not placed in a saved Review session. */
+export type ReviewDeferredOwner = {
+  cycle_id: string;
+  question_id: string;
+  stage: ReviewStage;
+  due_at: Date;
+  reason: "assignment_cap" | "no_publishable_version" | "deduped_question";
+};
+
 export type AssignedVersion = {
   position: number;
   question_id: string;
@@ -174,6 +183,8 @@ export type Session = {
   held_position?: number | null;
   /** Physiology supports the learner continued past. These are not attempts. */
   skipped_positions?: number[];
+  /** Clinical owners due at session start but not assigned (cap, dedupe, or version). */
+  review_deferred_owners?: ReviewDeferredOwner[];
 };
 
 export type Attempt = {

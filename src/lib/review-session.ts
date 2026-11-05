@@ -4,6 +4,7 @@ import { newPermanentId } from "@/lib/ids";
 import {
   CURRENT_RULE_SET_VERSION,
   type AssignedVersion,
+  type ReviewDeferredOwner,
   type ReviewStage,
   type Session,
   type SixState,
@@ -118,6 +119,76 @@ export function assignDueOwnerQuestions(
     );
   }
   return rows.map((row, index) => ({ ...row, position: index + 1 }));
+}
+
+function readyOwners(sources: readonly DueOwnerSource[]): ReadyOwner[] {
+  return sources.filter(
+    (source): source is ReadyOwner =>
+      typeof source.question_version_id === "string" &&
+      source.question_version_id.length > 0 &&
+      (source.stage === "REPAIR" || source.stage === "CONFIRMATION"),
+  );
+}
+
+/** Owners due at Review start that were not assigned to the saved session. */
+export function deferredOwnersForReviewStart(
+  sources: readonly DueOwnerSource[],
+  seed: string,
+  offers: readonly ReviewFollowOffer[] = [],
+): ReviewDeferredOwner[] {
+  const deferred: ReviewDeferredOwner[] = [];
+  const ready = readyOwners(sources);
+  const readyCycleIds = new Set(ready.map((source) => source.cycle_id));
+  for (const source of sources) {
+    if (readyCycleIds.has(source.cycle_id)) {
+      continue;
+    }
+    if (source.stage !== "REPAIR" && source.stage !== "CONFIRMATION") {
+      continue;
+    }
+    deferred.push({
+      cycle_id: source.cycle_id,
+      question_id: source.question_id,
+      stage: source.stage,
+      due_at: source.due_at,
+      reason: "no_publishable_version",
+    });
+  }
+
+  const unique = dedupeOwners(ready);
+  const uniqueCycleIds = new Set(unique.map((source) => source.cycle_id));
+  for (const source of ready) {
+    if (uniqueCycleIds.has(source.cycle_id)) {
+      continue;
+    }
+    deferred.push({
+      cycle_id: source.cycle_id,
+      question_id: source.question_id,
+      stage: source.stage,
+      due_at: source.due_at,
+      reason: "deduped_question",
+    });
+  }
+
+  const plan = planReviewAssignments(unique, offers);
+  const selectedCycleIds = new Set(plan.owners.map((source) => source.cycle_id));
+  for (const source of unique) {
+    if (selectedCycleIds.has(source.cycle_id)) {
+      continue;
+    }
+    deferred.push({
+      cycle_id: source.cycle_id,
+      question_id: source.question_id,
+      stage: source.stage,
+      due_at: source.due_at,
+      reason: "assignment_cap",
+    });
+  }
+  return deferred.sort(
+    (left, right) =>
+      left.due_at.getTime() - right.due_at.getTime() ||
+      compareUtf8(left.cycle_id, right.cycle_id),
+  );
 }
 
 function planReviewAssignments(
@@ -417,6 +488,7 @@ export async function startReviewSession(input: {
     throw new Error("review selection assigned the same question twice");
   }
 
+  const deferred = deferredOwnersForReviewStart(due, seed, offers);
   const session: Session = {
     session_id: (input.newId ?? newPermanentId)(),
     learner_id: input.learnerId,
@@ -428,6 +500,7 @@ export async function startReviewSession(input: {
     created_at: input.now ?? new Date(),
     rule_set_version: CURRENT_RULE_SET_VERSION,
     order_seed: seed,
+    review_deferred_owners: deferred.length > 0 ? deferred : undefined,
   };
 
   if ((await input.store.insert(session)) === "inserted") {
