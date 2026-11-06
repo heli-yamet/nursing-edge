@@ -174,6 +174,11 @@ async function ensureIndexes(db: Db): Promise<void> {
   await db.collection("delete_audits").createIndex({ occurred_at: -1 });
 
   await db
+    .collection("export_audits")
+    .createIndex({ audit_id: 1 }, { unique: true });
+  await db.collection("export_audits").createIndex({ occurred_at: -1 });
+
+  await db
     .collection("calibration_blueprints")
     .createIndex({ blueprint_id: 1 }, { unique: true });
   await db.collection("calibration_blueprints").createIndex(

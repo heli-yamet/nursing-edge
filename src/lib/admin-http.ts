@@ -16,6 +16,22 @@ export function emptyAdminCors(req: Request): Response {
   return response;
 }
 
+export function fileWithAdminCors(
+  req: Request,
+  body: string,
+  filename: string,
+): Response {
+  const response = new Response(body, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+    },
+  });
+  applyAdminCors(req, response);
+  return response;
+}
+
 function applyAdminCors(req: Request, response: Response): void {
   const origin = req.headers.get("origin") ?? "";
   const allowed = (process.env.ADMIN_ORIGIN ?? DEFAULT_ADMIN_ORIGIN)

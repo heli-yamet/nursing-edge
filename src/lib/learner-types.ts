@@ -288,6 +288,18 @@ export type DeleteAudit = {
   reason: string | null;
 };
 
+export type ExportAuditOutcome = "EXPORTED" | "REJECTED";
+
+/** Operator download of one learner's records. The file is keyed on learner_id. */
+export type ExportAudit = {
+  audit_id: string;
+  actor_admin_id: string;
+  learner_id: string;
+  occurred_at: Date;
+  outcome: ExportAuditOutcome;
+  reason: string | null;
+};
+
 export type ImportedQuestionSummary = {
   question_id: string;
   question_version_id: string;
