@@ -1,5 +1,6 @@
 import { MongoClient, type ClientSession, type Db } from "mongodb";
 import { ensureRelationshipIndexes } from "@/lib/relationship-indexes";
+import { resolveMongoDbName } from "@/lib/mongo-db-name";
 
 const uri = process.env.MONGODB_URI;
 
@@ -23,7 +24,7 @@ function getClientPromise(): Promise<MongoClient> {
 
 export async function getDb(): Promise<Db> {
   const client = await getClientPromise();
-  const db = client.db("prod");
+  const db = client.db(resolveMongoDbName(uri));
   const globalMongo = globalThis as GlobalMongo;
   if (!globalMongo._schemaIndexes) {
     globalMongo._schemaIndexes = ensureIndexes(db);
