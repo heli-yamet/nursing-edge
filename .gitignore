@@ -21,6 +21,9 @@
 # production
 /build
 
+# mongodb dumps (learner PII; see scripts/mongodb-backup.md)
+/backups/
+
 # misc
 .DS_Store
 *.pem

@@ -7,7 +7,9 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "backup:mongo": "node scripts/mongo-backup.mjs",
+    "backup:mongo:probe": "node scripts/mongo-backup.mjs --probe-only"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

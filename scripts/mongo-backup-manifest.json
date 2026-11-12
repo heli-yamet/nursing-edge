@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "description": "Nursing Edge MongoDB collections included in mongodump backups. Matches learner-collections, relationship-collections, and admin audit surfaces in the learner API.",
+  "retention_expectation": {
+    "development": "Keep up to 14 timestamped dump folders under backups/ on developer storage; delete older dumps that contain learner PII.",
+    "production": "Keep at least 30 days of off-cluster dumps (encrypted object storage or ops vault) in addition to Atlas continuous backup if enabled. Rotate dump encryption keys per hosting policy.",
+    "never_commit": "Do not commit BSON/JSON dumps or backup-run reports that contain real learner data to git."
+  },
+  "categories": {
+    "admin_identity": {
+      "description": "Operator accounts and login codes",
+      "collections": ["admin_users", "admin_users_codes"]
+    },
+    "learner_identity_and_access": {
+      "description": "Learners, login codes, entitlements, access grant audit",
+      "collections": [
+        "learners",
+        "learner_codes",
+        "entitlements",
+        "access_grant_audits"
+      ]
+    },
+    "learner_evidence": {
+      "description": "Sessions, attempts, exposures, Review cycles, interview deliveries, calibration",
+      "collections": [
+        "sessions",
+        "attempts",
+        "exposures",
+        "review_cycles",
+        "review_transitions",
+        "interview_deliveries",
+        "calibrations",
+        "calibration_blueprints",
+        "calibration_uploads"
+      ]
+    },
+    "content": {
+      "description": "Question bank and import staging",
+      "collections": [
+        "questions",
+        "question_versions",
+        "import_batches",
+        "import_lines"
+      ]
+    },
+    "relationships": {
+      "description": "Maps, links, registries, teaching and evidence bindings, runtime roles",
+      "collections": [
+        "cj_classes",
+        "judgments",
+        "families",
+        "contexts",
+        "variant_groups",
+        "topic_registry",
+        "topic_bindings",
+        "maps",
+        "transfer_links",
+        "link_eligibility",
+        "exposure_dependencies",
+        "dependency_retirements",
+        "precommit_teaching",
+        "teaching_decisions",
+        "evidence_bindings",
+        "mechanisms",
+        "support_links",
+        "link_decisions",
+        "ap_variant_groups",
+        "runtime_roles"
+      ]
+    },
+    "content_audit": {
+      "description": "Publish, pause, delete, and export audits from admin actions",
+      "collections": [
+        "publish_audits",
+        "pause_audits",
+        "delete_audits",
+        "export_audits"
+      ]
+    }
+  }
+}

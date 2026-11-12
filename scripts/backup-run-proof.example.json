@@ -1,0 +1,15 @@
+{
+  "_comment": "Shape of backup-run-report.json from scripts/mongo-backup.mjs. Real reports live under nursing-edge/backups/ (gitignored). Do not commit dumps or reports that contain production learner data.",
+  "started_at": "2026-11-11T15:05:14.049Z",
+  "finished_at": "2026-11-11T15:05:54.280Z",
+  "duration_ms": 40231,
+  "database": "nursing-edge-dev",
+  "probe_only": true,
+  "collections_requested": 43,
+  "collections_missing": 0,
+  "mongodump": null,
+  "dump_bytes": null,
+  "verification_notes": {
+    "dev_probe_2026_11_11": "Probe-only run on developer machine: 43 manifest collections present, ~40s round-trip. Install MongoDB Database Tools and re-run without --probe-only for BSON size."
+  }
+}

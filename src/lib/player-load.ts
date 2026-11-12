@@ -73,7 +73,8 @@ export function questionCanBeDisplayed(
   );
 }
 
-const QUESTION_PROJECTION = {
+/** Mongo projection for learner-facing question payloads before and during feedback hold. */
+export const playerQuestionMongoProjection = {
   _id: 0,
   format: 1,
   stem: 1,
@@ -123,7 +124,7 @@ export async function loadOpenPlayerQuestion(
     await questionVersions()
   ).findOne(
     { question_version_id: open.question_version_id },
-    { projection: QUESTION_PROJECTION },
+    { projection: playerQuestionMongoProjection },
   );
   const role = await practiceRoleForVersion(open.question_version_id);
   if (!version || !questionCanBeDisplayed(version, role, session.type)) {
@@ -199,7 +200,7 @@ async function heldFeedback(
     await questionVersions()
   ).findOne(
     { question_version_id: assignment.question_version_id },
-    { projection: QUESTION_PROJECTION },
+    { projection: playerQuestionMongoProjection },
   );
   const role = await practiceRoleForVersion(assignment.question_version_id);
   if (isPracticeBarredRole(role) && type !== "REVIEW") {
