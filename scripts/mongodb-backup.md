@@ -65,7 +65,13 @@ Adjust per client ops policy; the manifest `retention_expectation` block is the 
 
 ## Restore
 
-Thursday restore drill: use `mongorestore` into a **clean** target database with matching `MONGODB_DB_NAME`, then recreate indexes via app startup or `ensureRelationshipIndexes`. Step-by-step restore notes are a separate plan item.
+Full step-by-step restore and dev drill: [mongodb-restore.md](./mongodb-restore.md).
+
+Quick dev drill (same cluster, no `mongodump` required):
+
+```bash
+npm run restore:drill -- --target-db nursing-edge-restore-drill-YYYY-MM-DD
+```
 
 ## Destructive work warning
 
@@ -76,5 +82,6 @@ Never `mongorestore --drop` or run content imports against production without ve
 | Date | Mode | Result |
 | --- | --- | --- |
 | 2026-11-11 | `--probe-only` | 43 manifest collections found (0 missing); ~37–40s connect and count pass. `mongodump` not on PATH on this machine — install [Database Tools](https://www.mongodb.com/try/download/database-tools) for BSON dumps and `dump_bytes` in the report. |
+| 2026-11-12 | `restore:drill` | Driver clone `prod` → `nursing-edge-restore-drill-2026-11-12` (~18 min clone + ~39s indexes); fingerprint verify passed (1 ACTIVE session, 12 import batches). Resume: `--resume-dir` + `--skip-clone`. BSON path: `mongo-restore-from-dump.mjs` when Database Tools are installed. |
 
 Safe report shape (no PII): [backup-run-proof.example.json](./backup-run-proof.example.json). Live reports stay under `backups/` only.

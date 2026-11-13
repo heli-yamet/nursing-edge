@@ -2,7 +2,13 @@ import { MongoClient, type ClientSession, type Db } from "mongodb";
 import { ensureRelationshipIndexes } from "@/lib/relationship-indexes";
 import { resolveMongoDbName } from "@/lib/mongo-db-name";
 
-const uri = process.env.MONGODB_URI;
+function getMongoUri(): string {
+  const value = process.env.MONGODB_URI;
+  if (!value) {
+    throw new Error("MONGODB_URI is not set");
+  }
+  return value;
+}
 
 type GlobalMongo = typeof globalThis & {
   _mongoClientPromise?: Promise<MongoClient>;
@@ -10,9 +16,7 @@ type GlobalMongo = typeof globalThis & {
 };
 
 function getClientPromise(): Promise<MongoClient> {
-  if (!uri) {
-    throw new Error("MONGODB_URI is not set");
-  }
+  const uri = getMongoUri();
 
   const globalMongo = globalThis as GlobalMongo;
   if (!globalMongo._mongoClientPromise) {
@@ -23,6 +27,7 @@ function getClientPromise(): Promise<MongoClient> {
 }
 
 export async function getDb(): Promise<Db> {
+  const uri = getMongoUri();
   const client = await getClientPromise();
   const db = client.db(resolveMongoDbName(uri));
   const globalMongo = globalThis as GlobalMongo;

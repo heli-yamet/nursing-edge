@@ -1,0 +1,12 @@
+{
+  "_comment": "Shape of restore-drill-report.json from scripts/mongo-restore-drill.mjs. Live output stays under nursing-edge/backups/ (gitignored).",
+  "started_at": "2026-11-12T20:00:00.000Z",
+  "finished_at": "2026-11-12T20:05:00.000Z",
+  "duration_ms": 75331,
+  "source_database": "prod",
+  "target_database": "nursing-edge-restore-drill-2026-11-12",
+  "method": "driver_clone",
+  "dump_dir": null,
+  "output_dir": "D:\\Project\\NursingEdge\\nursing-edge\\backups\\restore-drill-2026-11-12T20-00-00-000Z",
+  "verification": "passed"
+}

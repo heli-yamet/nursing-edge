@@ -9,7 +9,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "backup:mongo": "node scripts/mongo-backup.mjs",
-    "backup:mongo:probe": "node scripts/mongo-backup.mjs --probe-only"
+    "backup:mongo:probe": "node scripts/mongo-backup.mjs --probe-only",
+    "restore:drill": "node scripts/mongo-restore-drill.mjs",
+    "restore:indexes": "node scripts/mongo-ensure-indexes.harness.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

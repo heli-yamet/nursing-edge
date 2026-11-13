@@ -1,5 +1,20 @@
 const DEFAULT_ADMIN_ORIGIN = "http://localhost:3001";
 
+export function adminOriginAllowed(
+  origin: string,
+  adminOriginEnv = process.env.ADMIN_ORIGIN,
+): boolean {
+  const trimmed = origin.trim();
+  if (!trimmed) {
+    return false;
+  }
+  const allowed = (adminOriginEnv ?? DEFAULT_ADMIN_ORIGIN)
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return allowed.includes(trimmed);
+}
+
 export function jsonWithAdminCors(
   req: Request,
   body: unknown,
@@ -34,16 +49,10 @@ export function fileWithAdminCors(
 
 function applyAdminCors(req: Request, response: Response): void {
   const origin = req.headers.get("origin") ?? "";
-  const allowed = (process.env.ADMIN_ORIGIN ?? DEFAULT_ADMIN_ORIGIN)
-    .split(",")
-    .map((value) => value.trim());
-
-  console.log("CORS origin", origin);
-
-  // if (origin && allowed.includes(origin)) {
+  if (origin && adminOriginAllowed(origin)) {
     response.headers.set("Access-Control-Allow-Origin", origin);
     response.headers.set("Access-Control-Allow-Credentials", "true");
-  // }
+  }
 
   response.headers.set(
     "Access-Control-Allow-Headers",
