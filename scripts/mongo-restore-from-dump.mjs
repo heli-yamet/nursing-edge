@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /**
+ * Legacy BSON restore (MongoDB Database Tools). Superseded by Admin → Database restore.
  * Restore a mongodump folder into a target database (MongoDB Database Tools required).
  *
  * Usage:

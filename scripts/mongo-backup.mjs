@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Repeatable MongoDB backup for Nursing Edge (mongodump + manifest).
+ * Legacy local backup helper (mongodump + manifest).
+ * Operators: use Admin → Database (Vercel Blob) instead. See scripts/mongodb-backup.md.
  *
  * Usage (from nursing-edge/):
- *   node scripts/mongo-backup.mjs
  *   node scripts/mongo-backup.mjs --probe-only
- *   node scripts/mongo-backup.mjs --output-dir ../backups/custom-run
+ *   node scripts/mongo-backup.mjs
  *
- * Requires: MONGODB_URI, and MONGODB_DB_NAME (recommended). MongoDB Database Tools (mongodump) unless --probe-only.
+ * Requires: MONGODB_URI, MONGODB_DB_NAME. mongodump unless --probe-only.
  */
 
 import { spawnSync } from "node:child_process";

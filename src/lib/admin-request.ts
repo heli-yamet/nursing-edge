@@ -3,6 +3,29 @@ import { jsonWithAdminCors } from "@/lib/admin-http";
 import { verifyAdminToken } from "@/lib/admin-session";
 import type { AdminUser } from "@/lib/admin-types";
 
+export async function requireSuperAdmin(
+  req: Request,
+): Promise<
+  | { ok: true; admin: AdminUser }
+  | { ok: false; response: Response }
+> {
+  const auth = await requireActiveAdmin(req);
+  if (!auth.ok) {
+    return auth;
+  }
+  if (auth.admin.role !== "SUPER_ADMIN") {
+    return {
+      ok: false,
+      response: jsonWithAdminCors(
+        req,
+        { ok: false, error: "super_admin_required" },
+        403,
+      ),
+    };
+  }
+  return auth;
+}
+
 export async function requireActiveAdmin(
   req: Request,
 ): Promise<

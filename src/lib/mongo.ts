@@ -51,6 +51,10 @@ export async function runInTransaction<T>(
   }
 }
 
+export async function ensureAllSchemaIndexes(db: Db): Promise<void> {
+  await ensureIndexes(db);
+}
+
 async function ensureIndexes(db: Db): Promise<void> {
   await db.collection("admin_users").createIndex({ email: 1 }, { unique: true });
   await db.collection("admin_users").createIndex({ admin_id: 1 }, { unique: true });
@@ -204,6 +208,13 @@ async function ensureIndexes(db: Db): Promise<void> {
     .createIndex({ learner_id: 1 }, { unique: true });
 
   await ensureRelationshipIndexes(db);
+
+  await db
+    .collection("database_backup_jobs")
+    .createIndex({ job_id: 1 }, { unique: true });
+  await db
+    .collection("database_backup_jobs")
+    .createIndex({ status: 1, started_at: -1 });
 }
 
 async function ensureOpenReviewCycleIndex(db: Db): Promise<void> {

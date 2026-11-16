@@ -1,102 +1,64 @@
 # MongoDB restore (Nursing Edge)
 
-Step-by-step restore for dev drills and production recovery. Read [mongodb-environment.md](../docs/mongodb-environment.md) before any destructive work.
+Step-by-step restore for production recovery and dev drills. Read [mongodb-environment.md](../docs/mongodb-environment.md) before any destructive work.
 
-## Prerequisites
+## Primary method — Admin UI (Super Admin)
 
-- `MONGODB_URI` and explicit `MONGODB_DB_NAME` for the **target** after restore.
-- A backup: BSON folder from `npm run backup:mongo`, or a verified probe report from the same day.
-- For BSON restores: [MongoDB Database Tools](https://www.mongodb.com/try/download/database-tools) (`mongorestore` on `PATH`).
+1. Sign in as **SUPER_ADMIN** → **Database** → **Restore database**.
+2. Select a Blob backup (double-click or select + Continue).
+3. **Confirm restore:** type the **exact backup name**.
+4. Wait for the progress overlay (validate → collections → indexes).
 
-## Success criterion (Review week)
+**Effect:** Replaces data in the MongoDB database configured on the **learner API** (`MONGODB_DB_NAME` on that deployment). Works on production when env is set correctly. Only one backup/restore job runs at a time.
 
-After restore into a **clean** database name, a known learner keeps the same **ACTIVE** session, attempt counts on that session, Review cycle counts, and import staging row counts. The automated drill checks this via fingerprints (see below).
+**Validation before write:** `report.json` and every `data/{collection}.ndjson` must exist; document counts must match after each collection import.
 
-## Option A — Restore from `mongodump` (preferred for off-cluster archives)
+## Success criterion (security week)
 
-1. Confirm the dump folder layout:
+After restore, a known learner keeps the same **ACTIVE** session (when restoring the same DB), attempt counts, Review cycle counts, and import staging counts. Admin restore targets the live DB; dev drills below use a **separate** database name.
 
-   ```
-   backups/mongo-<source-db>-<timestamp>/
-     <source-db>/<collection>.bson
-     backup-run-report.json
-   ```
+## Legacy — same-cluster dev drill (optional)
 
-2. Pick a **new** target database name (never overwrite production by mistake), e.g. `nursing-edge-restore-drill-2026-11-12`.
-
-3. Restore:
-
-   ```bash
-   node scripts/mongo-restore-from-dump.mjs \
-     --dump-dir ./backups/mongo-prod-2026-11-11T15-05-14-049Z \
-     --target-db nursing-edge-restore-drill-2026-11-12
-   ```
-
-   Add `--source-db prod` if the folder’s database directory name differs from your current `MONGODB_DB_NAME`.
-
-4. Recreate indexes (without starting the Next.js app):
-
-   ```bash
-   npm run restore:indexes -- --db nursing-edge-restore-drill-2026-11-12
-   ```
-
-5. Verify fingerprints:
-
-   ```bash
-   node scripts/mongo-restore-fingerprint.mjs --db <source> --out ./source.json
-   node scripts/mongo-restore-fingerprint.mjs --db <target> --out ./restored.json
-   node scripts/mongo-restore-verify.mjs --before ./source.json --after ./restored.json
-   ```
-
-## Option B — Same-cluster dev drill (no Database Tools)
-
-When `mongodump` is not installed, clone manifest collections on the same cluster, then verify the same way:
+Clone manifest collections on the **same cluster** into a new database name (no Blob file):
 
 ```bash
-npm run restore:drill -- --target-db nursing-edge-restore-drill-2026-11-12
+cd nursing-edge
+npm run restore:drill -- --target-db nursing-edge-restore-drill-YYYY-MM-DD
 ```
 
-This runs: source fingerprint → `mongo-clone-database.mjs` → index harness → target fingerprint → compare. Output lives under `backups/restore-drill-<timestamp>/` (gitignored).
+Runs fingerprint → `mongo-clone-database.mjs` → indexes → compare. Reports under `backups/restore-drill-*` (gitignored).
 
-Large databases may take several minutes to clone. If clone finishes but indexes time out, resume:
+Resume after clone:
 
 ```bash
-npm run restore:drill -- --target-db nursing-edge-restore-drill-2026-11-12 \
+npm run restore:drill -- --target-db <name> \
   --resume-dir ./backups/restore-drill-<timestamp> --skip-clone
 ```
 
-Optional: set `MONGO_CLONE_USE_OUT=1` when Atlas allows cross-database `$out` (many developer roles do not).
+## Legacy — BSON `mongorestore` (deprecated for ops)
 
-To restore from BSON when tools are available:
+Superseded by Admin Blob restore. Requires MongoDB Database Tools. Only if you still have an old `backups/mongo-*` folder:
 
 ```bash
-node scripts/mongo-restore-drill.mjs \
-  --target-db nursing-edge-restore-drill-2026-11-12 \
-  --dump-dir ./backups/mongo-prod-...
+node scripts/mongo-restore-from-dump.mjs \
+  --dump-dir ./backups/mongo-... \
+  --target-db <target-db>
+npm run restore:indexes -- --db <target-db>
 ```
 
-## Pointing the app at a restored database
+## Pointing the app at a drill database (local only)
 
-Only for local verification:
-
-1. Set `MONGODB_DB_NAME` in `.env.local` to the target database.
-2. Do **not** run destructive imports while pointed at the wrong name.
-3. Revert to your dev database name when finished.
-
-Production cutover is a hosting/ops decision (Vercel env vars, maintenance window). This repo documents mechanics, not cutover policy.
-
-## After restore
-
-- Relationship and learner indexes are idempotent; running the index harness or one API `getDb()` call is sufficient.
-- Drop drill databases when done: Atlas UI, or let `mongo-clone-database.mjs` drop collections on the next drill (Atlas users often lack `dropDatabase`).
+1. Set `MONGODB_DB_NAME` in `.env.local` to the drill target.
+2. Revert when finished.
 
 ## Never
 
-- `mongorestore --drop` against production without a written ops check (`MONGODB_DB_NAME`, backup file, maintenance window).
-- Commit `backups/`, fingerprint JSON, or drill reports that contain real learner identifiers to git.
+- Restore production without confirming **`MONGODB_DB_NAME`** on the learner API Vercel project.
+- Commit `backups/`, fingerprint JSON, or drill reports with learner identifiers to git.
 
 ## Verification log
 
 | Date | Method | Result |
 | --- | --- | --- |
-| 2026-11-12 | `restore:drill` (driver clone) | Passed on dev cluster: source `prod`, target `nursing-edge-restore-drill-2026-11-12`, verification `passed` (~77s resume step after clone). See `restore-run-proof.example.json`; live report under `backups/restore-drill-*` |
+| 2026-11-12 | `restore:drill` (driver clone) | Passed: verification `passed`. |
+| 2026-11-16 | Admin Blob restore | Documented; canonical operator path alongside checkpoint 27.2. |
