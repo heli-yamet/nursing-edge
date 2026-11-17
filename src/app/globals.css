@@ -19,3 +19,18 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+@layer base {
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--teal);
+    outline-offset: 2px;
+  }
+
+  :focus-visible {
+    scroll-margin-top: 4.5rem;
+  }
+}

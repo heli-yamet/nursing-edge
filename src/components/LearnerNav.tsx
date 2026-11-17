@@ -51,7 +51,7 @@ export function LearnerNav({
                 key={id}
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`inline-flex min-h-[48px] items-center justify-center rounded-[10px] border-b-2 px-2 text-sm font-medium sm:px-3 sm:text-base ${
+                className={`inline-flex min-h-[48px] items-center justify-center rounded-[10px] border-b-2 px-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B7F86] sm:px-3 sm:text-base ${
                   active
                     ? "border-[#0B7F86] bg-[#E8F5F5] font-semibold text-[#08666C]"
                     : "border-transparent text-[#163A59] hover:bg-[#F7F9FA]"

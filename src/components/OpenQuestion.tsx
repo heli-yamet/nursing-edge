@@ -27,10 +27,10 @@ const confidenceClass =
   "flex min-h-[72px] cursor-pointer items-start gap-3 rounded-[10px] border border-[#D9E1E5] bg-white px-3 py-3 text-left has-[:checked]:border-[#0B7F86] has-[:checked]:bg-[#E8F5F5] has-[:disabled]:cursor-not-allowed has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[#0B7F86]";
 
 const secondaryButtonClass =
-  "inline-flex min-h-[48px] w-full items-center justify-center rounded-[10px] border border-[#D9E1E5] bg-white px-5 text-base font-medium text-[#163A59] hover:bg-[#F7F9FA] sm:w-auto";
+  "inline-flex min-h-[48px] w-full items-center justify-center rounded-[10px] border border-[#D9E1E5] bg-white px-5 text-base font-medium text-[#163A59] hover:bg-[#F7F9FA] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B7F86] sm:w-auto";
 
 const primaryButtonClass =
-  "inline-flex min-h-[48px] w-full items-center justify-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto";
+  "inline-flex min-h-[48px] w-full items-center justify-center rounded-[10px] bg-[#0B7F86] px-5 text-base font-medium text-white hover:bg-[#08666C] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#163A59] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto";
 
 const SUBMIT_FAILURE =
   "Your answer was not submitted. Check your connection and try again.";
@@ -177,7 +177,7 @@ function ResultCard({ reveal }: { reveal: FactualReveal }) {
           type="button"
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
-          className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-[#0B7F86]"
+          className="mt-4 inline-flex min-h-[48px] items-center gap-2 rounded-[10px] text-sm font-medium text-[#0B7F86] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B7F86]"
         >
           <ChevronMark open={open} />
           See deeper explanation
