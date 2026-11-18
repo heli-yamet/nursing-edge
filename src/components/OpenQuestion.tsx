@@ -15,6 +15,7 @@ import { EndSessionControl } from "@/components/EndSessionControl";
 import { ReviewInterview } from "@/components/ReviewInterview";
 import { EMPTY_DEEPER, type FactualReveal } from "@/lib/factual-reveal";
 import type { InterviewOpening } from "@/lib/review-interview";
+import { revealLiveSummary } from "@/lib/reveal-announcement";
 import { SUPPORT_SKIP_LABEL } from "@/lib/review-rules";
 import { sixStateCopy } from "@/lib/six-state-copy";
 import type { Confidence, QuestionFormat } from "@/lib/learner-types";
@@ -107,6 +108,7 @@ function InterpretationLines({
 }
 
 function ResultCard({ reveal }: { reveal: FactualReveal }) {
+  const outcomeId = useId();
   const [open, setOpen] = useState(false);
   const correct = reveal.outcome === "Correct";
   const deeper = reveal.deeper ?? EMPTY_DEEPER;
@@ -120,7 +122,7 @@ function ResultCard({ reveal }: { reveal: FactualReveal }) {
   return (
     <section
       className="mt-5 overflow-hidden rounded-[16px] border border-[#D9E1E5] bg-white"
-      aria-live="polite"
+      aria-labelledby={outcomeId}
     >
       <div
         className={`flex items-center gap-3 px-5 py-4 ${
@@ -128,13 +130,16 @@ function ResultCard({ reveal }: { reveal: FactualReveal }) {
         }`}
       >
         <span
+          aria-hidden="true"
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white ${
             correct ? "bg-[#1E9B57]" : "bg-[#D14343]"
           }`}
         >
           {correct ? <CheckMark /> : <CloseMark />}
         </span>
-        <h2 className="text-xl font-semibold text-[#163A59]">{reveal.outcome}</h2>
+        <h2 id={outcomeId} className="text-xl font-semibold text-[#163A59]">
+          {reveal.outcome}
+        </h2>
       </div>
       <div className="px-5 py-5">
         <p className="text-xs font-semibold tracking-[0.14em] text-[#66727A] uppercase">
@@ -576,6 +581,11 @@ export function OpenQuestion({
           </div>
         </fieldset>
       ) : null}
+      {reveal ? (
+        <p className="sr-only" aria-live="polite" aria-atomic="true">
+          {revealLiveSummary(reveal)}
+        </p>
+      ) : null}
       {reveal ? <ResultCard reveal={reveal} /> : null}
       {notice ? (
         <p className="mt-5 text-base leading-7 text-[#24313A]" role="status">
@@ -633,12 +643,13 @@ export function OpenQuestion({
           <button
             type="button"
             disabled={!submitReady || pending}
+            aria-busy={pending}
             onClick={() => {
               void submitAnswer();
             }}
             className={primaryButtonClass}
           >
-            Submit Answer
+            {pending ? "Submitting…" : "Submit Answer"}
           </button>
         )}
       </div>

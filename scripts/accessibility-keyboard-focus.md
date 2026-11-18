@@ -1,6 +1,6 @@
 # Keyboard and visible focus (17 Nov 2026)
 
-Tuesday accessibility work for the learner and admin apps: tab order, visible `:focus-visible` rings, dialog focus return, and sticky-header scroll margin. Screen-reader labels, contrast, and launch scenarios are tracked on other plan days.
+Tuesday accessibility work for the learner and admin apps: tab order, visible `:focus-visible` rings, dialog focus return, and sticky-header scroll margin. Screen-reader labels and pre-commit announcements are in [accessibility-screen-reader.md](./accessibility-screen-reader.md). Contrast and launch scenarios are tracked on other plan days.
 
 ## What we verified
 
