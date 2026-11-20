@@ -79,4 +79,4 @@ Reviewed at component level (no browser automation; apps stay stopped).
 - [x] Status changelog 0.0.32 (2026-11-19) in nursing-edge-status
 - [x] `npm test` in `nursing-edge` — workbook import suites skipped locally when xlsx absent; unrelated failures only
 - [ ] Manual spot-check at 390px width on staging when available (Practice submit, Review commit, import upload)
-- [ ] Fri launch scenarios and changelog (out of Thu scope)
+- [x] Fri launch scenarios and changelog 0.0.33 (2026-11-20) — see nursing-edge/scripts/launch-scenarios.md
