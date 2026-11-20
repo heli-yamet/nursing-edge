@@ -193,7 +193,7 @@ export function ReviewInterview({
         </>
       )}
       {error ? (
-        <p className="mt-4 text-base leading-7 text-[#24313A]" role="alert">
+        <p className="mt-4 text-base leading-7 text-[#9B2C2C] font-medium" role="alert">
           {error}
         </p>
       ) : null}

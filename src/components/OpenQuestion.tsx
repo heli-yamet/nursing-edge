@@ -22,10 +22,10 @@ import type { Confidence, QuestionFormat } from "@/lib/learner-types";
 import type { PreCommitOption } from "@/lib/player-question";
 
 const choiceClass =
-  "flex min-h-[48px] cursor-pointer items-start gap-3 rounded-[10px] border border-[#D9E1E5] bg-white px-4 py-3 text-base leading-7 text-[#24313A] has-[:checked]:border-[#0B7F86] has-[:checked]:bg-[#E8F5F5] has-[:disabled]:cursor-not-allowed has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[#0B7F86]";
+  "flex min-h-[48px] cursor-pointer items-start gap-3 rounded-[10px] border border-[#D9E1E5] bg-white px-4 py-3 text-base leading-7 text-[#24313A] has-[:checked]:border-[#08666C] has-[:checked]:bg-[#E8F5F5] has-[:checked]:font-medium has-[:checked]:text-[#163A59] has-[:disabled]:cursor-not-allowed has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[#0B7F86]";
 
 const confidenceClass =
-  "flex min-h-[72px] cursor-pointer items-start gap-3 rounded-[10px] border border-[#D9E1E5] bg-white px-3 py-3 text-left has-[:checked]:border-[#0B7F86] has-[:checked]:bg-[#E8F5F5] has-[:disabled]:cursor-not-allowed has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[#0B7F86]";
+  "flex min-h-[72px] cursor-pointer items-start gap-3 rounded-[10px] border border-[#D9E1E5] bg-white px-3 py-3 text-left has-[:checked]:border-[#08666C] has-[:checked]:bg-[#E8F5F5] has-[:checked]:shadow-[inset_0_0_0_1px_#08666C] has-[:disabled]:cursor-not-allowed has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[#0B7F86]";
 
 const secondaryButtonClass =
   "inline-flex min-h-[48px] w-full items-center justify-center rounded-[10px] border border-[#D9E1E5] bg-white px-5 text-base font-medium text-[#163A59] hover:bg-[#F7F9FA] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B7F86] sm:w-auto";
@@ -142,7 +142,7 @@ function ResultCard({ reveal }: { reveal: FactualReveal }) {
         </h2>
       </div>
       <div className="px-5 py-5">
-        <p className="text-xs font-semibold tracking-[0.14em] text-[#66727A] uppercase">
+        <p className="text-xs font-semibold tracking-[0.14em] text-[#5C6B74] uppercase">
           Correct answer
         </p>
         <ul className="mt-2 grid gap-2">
@@ -182,7 +182,7 @@ function ResultCard({ reveal }: { reveal: FactualReveal }) {
           type="button"
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
-          className="mt-4 inline-flex min-h-[48px] items-center gap-2 rounded-[10px] text-sm font-medium text-[#0B7F86] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B7F86]"
+          className="mt-4 inline-flex min-h-[48px] items-center gap-2 rounded-[10px] text-sm font-medium text-[#08666C] underline decoration-[#08666C]/35 underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B7F86]"
         >
           <ChevronMark open={open} />
           See deeper explanation
@@ -495,7 +495,7 @@ export function OpenQuestion({
   }
 
   return (
-    <article aria-labelledby="open-question-heading">
+    <article className="min-w-0 max-w-full" aria-labelledby="open-question-heading">
       <h1
         id="open-question-heading"
         className="text-[28px] leading-tight font-semibold text-[#163A59] sm:text-[32px]"
@@ -516,7 +516,7 @@ export function OpenQuestion({
       >
         <div className="h-full bg-[#0B7F86]" style={{ width: `${progress}%` }} />
       </div>
-      <p className="mt-5 text-base leading-7 whitespace-pre-wrap text-[#24313A]">
+      <p className="mt-5 break-words text-base leading-7 whitespace-pre-wrap text-[#24313A]">
         {stem}
       </p>
       {interview ? (
@@ -542,7 +542,7 @@ export function OpenQuestion({
                 onChange={() => chooseOption(option.option_id)}
                 className="mt-1 h-5 w-5 accent-[#0B7F86]"
               />
-              <span>
+              <span className="min-w-0 break-words">
                 <span className="font-medium text-[#163A59]">
                   {option.displayed_option}.
                 </span>{" "}
@@ -569,7 +569,9 @@ export function OpenQuestion({
                   className="mt-1 h-5 w-5 shrink-0 accent-[#0B7F86]"
                 />
                 <span>
-                  <span className="block font-medium text-[#163A59]">
+                  <span
+                    className={`block font-medium text-[#163A59] ${confidence === choice.value ? "font-semibold" : ""}`}
+                  >
                     {choice.label}
                   </span>
                   <span className="mt-1 block text-sm leading-5 text-[#24313A]">
@@ -593,7 +595,7 @@ export function OpenQuestion({
         </p>
       ) : null}
       {error ? (
-        <p className="mt-6 text-base leading-7 text-[#24313A]" role="alert">
+        <p className="mt-6 text-base leading-7 text-[#9B2C2C] font-medium" role="alert">
           {error}
         </p>
       ) : null}

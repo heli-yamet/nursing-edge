@@ -1,6 +1,6 @@
 # Screen reader labels and pre-commit safety (18 Nov 2026)
 
-Wednesday accessibility work: page titles, roles and labels, polite announcements after commit, commit and draft errors, and confirmation that pre-commit player payloads omit answer keys and rationales. Keyboard and focus notes live in [accessibility-keyboard-focus.md](./accessibility-keyboard-focus.md).
+Wednesday accessibility work: page titles, roles and labels, polite announcements after commit, commit and draft errors, and confirmation that pre-commit player payloads omit answer keys and rationales. Keyboard and focus notes live in [accessibility-keyboard-focus.md](./accessibility-keyboard-focus.md). Contrast and mobile layout notes live in [accessibility-contrast-mobile.md](./accessibility-contrast-mobile.md).
 
 ## What we verified
 

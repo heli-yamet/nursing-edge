@@ -73,7 +73,7 @@ export function BaselineChoice() {
             "Could not save your choice. Try again.",
           )
         }
-        className="mt-2 inline-flex min-h-[48px] items-center rounded-[10px] border border-[#0B7F86] bg-white px-5 text-base font-medium text-[#0B7F86] hover:bg-[#F7F9FA] disabled:opacity-60"
+        className="mt-2 inline-flex min-h-[48px] items-center rounded-[10px] border border-[#08666C] bg-white px-5 text-base font-medium text-[#08666C] hover:bg-[#F7F9FA] disabled:opacity-60"
       >
         {busy === "topic" ? "Saving…" : "Choose a Topic Instead"}
       </button>
