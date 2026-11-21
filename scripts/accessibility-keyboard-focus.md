@@ -12,7 +12,12 @@ Tuesday accessibility work for the learner and admin apps: tab order, visible `:
 | Practice setup, session (`OpenQuestion`) | Fieldsets, option labels with `has-[:focus-visible]:outline`, primary/secondary actions at 48px |
 | End session (`EndSessionControl`) | Inline `alertdialog` with focus trap and return to trigger |
 | Home dashboard action links | `focus-visible` on primary and quiet cards |
+| Practice / Review **ended** (`practice/ended`, `review/ended`) | Primary next actions at `min-h-[48px]`; focus via global `:focus-visible` |
+| **Progress** (`LearnerShell` + `ProgressView`) | Same shell skip link and nav focus pattern as other journeys |
+| **Review Interview** (`ReviewInterview`) | Textarea and primary/secondary actions use `focus-visible` and 48px buttons |
 | Admin imports | Tab list with `role="tab"` / `tabpanel`; question detail modal returns focus to opener |
+| Admin **Links / Teaching** Approve and Ban | `LinkApprovalTable` / `TeachingApprovalTable` actions at 48px with visible focus |
+| Admin **Learners**, **Overview**, **Audit**, **Learning evidence** | Shell nav + page `h1`; filters use labeled sections (see screen-reader notes) |
 | Database backup / restore | Modal focus trap; job overlay traps focus until Close |
 | Skip link | "Skip to main content" on signed-in learner and admin shells |
 

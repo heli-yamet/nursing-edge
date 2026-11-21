@@ -2,7 +2,7 @@
 
 Friday closes the **week of 16 Nov** accessibility track and runs the **pre–Developer Complete launch scenario pass** from the overall project plan (trace via tests and code; staging only when the client requests a deployed walkthrough). This is **not** Developer Complete (target **Wed 25 Nov**).
 
-Automated anchors: `src/tests/launch-scenarios.test.ts`, plus the suites cited below. Apps stay stopped unless the client explicitly asks for staging.
+Automated anchors: `src/tests/launch-scenarios.test.ts`, plus the suites cited below. Suites live in `nursing-edge/src/tests/` (local/CI only; path is in `.gitignore`). Apps stay stopped unless the client explicitly asks for staging.
 
 ## Scenario results
 

@@ -25,4 +25,4 @@ Wednesday accessibility work: page titles, roles and labels, polite announcement
 1. **Post-commit exploration** — Learners reach rationales and teaching by reading the result card or expanding "See deeper explanation"; only the short outcome line is announced automatically.
 2. **Held feedback on reload** — When the server restores an in-progress reveal, the polite region may repeat the outcome summary on mount.
 3. **Admin table headers** — Sticky headers keep filter menus in the tab order while scrolling; see keyboard notes for overlap with the page header.
-4. **Automated coverage** — Live-region and label checks are partly unit-tested (`accessibility-screen-reader.test.ts`, player payload tests); full screen-reader walks remain manual or a later E2E pass.
+4. **Automated coverage** — Live-region and label checks are partly unit-tested (`accessibility-screen-reader.test.ts`, player payload tests); suites live in `nursing-edge/src/tests/` (local/CI only; path is in `.gitignore`). Full screen-reader walks remain manual or a later E2E pass.
