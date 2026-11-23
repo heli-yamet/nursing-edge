@@ -29,13 +29,23 @@ Command: `npm test` in `nursing-edge`.
 
 Launch-critical suites (access, Practice/Review session, commit, restore manifest, route auth, checkpoint) are green.
 
+## Mon 23 Nov 2026 — production Review timing
+
+**Code:** `REPAIR_DELAY_MS` = 24h, `CONFIRMATION_DELAY_MS` = 72h (`review-rules.ts`); Review active window = 14 days and expiry-near = 24h (`clock.ts`). `invariants.test.ts` scenarios **6** and **7** pass on these values.
+
+**Test run (23 Nov):** `npm test` in `nursing-edge` — **417 tests**, **412 passed**, **5 failed** (workbook `ENOENT` only; same as 20 Nov local skips). Delay-related failures cleared.
+
+**Document 05 / staging walkthrough:** No staging access this session. Scenario threads **1–8** remain **Passed** on the **20 Nov** automated evidence above plus **23 Nov** delay reset verification (`invariants.test.ts`, `review-outlook.test.ts`, `commit-answer.test.ts`, `review-session.test.ts`). Not manually exercised on deployed staging: live Practice→Review commit with real 24h/72h clocks, admin import upload, **390px** spot-check.
+
+**Release anchor (three repos):** See [release-walkthrough-2026-11-23.md](./release-walkthrough-2026-11-23.md) after the learner commit; admin and status SHAs unchanged if only learner timing shipped.
+
 ## Fixes this Friday
 
 None required. Scenario pass is code-and-test traced only; no product behavior changes.
 
 ## Open for Mon 23 – Wed 25 Nov (Developer Complete)
 
-1. Reset Review test delays to **24h Repair** and **72h Confirmation** (`invariants.test.ts` and related clock expectations).
+1. ~~Reset Review test delays to **24h Repair** and **72h Confirmation**~~ — **done 23 Nov** (`review-rules.ts`, `clock.ts`).
 2. End-to-end walkthrough on one release commit (document 05 scenarios) when staging is available.
 3. Package: eligibility report, test report, Shopify proof, mobile and accessibility notes (`scripts/accessibility-*.md`), security checklist, restore proof, sample export, known limits.
 4. Optional manual **390px** spot-check on staging (Practice submit, Review commit, admin import upload) — noted in [accessibility-contrast-mobile.md](./accessibility-contrast-mobile.md).
@@ -46,4 +56,4 @@ None required. Scenario pass is code-and-test traced only; no product behavior c
 - [mongodb-backup.md](./mongodb-backup.md) / [mongodb-restore.md](./mongodb-restore.md) — Admin Blob backup and restore
 - [accessibility-keyboard-focus.md](./accessibility-keyboard-focus.md), [accessibility-screen-reader.md](./accessibility-screen-reader.md), [accessibility-contrast-mobile.md](./accessibility-contrast-mobile.md)
 
-**Gate status (20 Nov):** Launch scenario threads **passed** on automated evidence. **Developer Complete:** not yet.
+**Gate status (23 Nov):** Launch scenario threads **passed** on automated evidence; production Review delays active in code. **Developer Complete:** Wed 25 Nov (handoff package Tue 24).

@@ -6,8 +6,8 @@ import type {
   SixState,
 } from "@/lib/learner-types";
 
-export const REPAIR_DELAY_MS = 24 * 1000;
-export const CONFIRMATION_DELAY_MS = 72 * 1000;
+export const REPAIR_DELAY_MS = 24 * 60 * 60 * 1000;
+export const CONFIRMATION_DELAY_MS = 72 * 60 * 60 * 1000;
 
 export type ReviewEntry = {
   stage: ReviewStage;
