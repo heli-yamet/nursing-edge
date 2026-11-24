@@ -6,7 +6,7 @@ import {
   inspectContentImportFile,
   MAX_CONTENT_IMPORT_BYTES,
 } from "@/lib/content-import";
-import { selected1 } from "@/lib/fixtures/selected-1";
+import { selected1, selected1VersionId } from "@/lib/fixtures/selected-1";
 import { isLearnerEligible } from "@/lib/stage-import";
 
 describe("content import", () => {
@@ -51,12 +51,12 @@ describe("content import", () => {
     expect(result.batch.source).toBe("selected-1.xlsx");
     expect(result.batch.passed_count).toBe(1);
     expect(result.lines[0]?.outcome).toBe("PASSED");
-    const version = store.versions.get("M2-CLEANUP-SELECTED-0001");
+    const version = store.versions.get(selected1VersionId);
     expect(version?.publication_status).toBe("STAGED");
     expect(version && isLearnerEligible(version)).toBe(false);
     const imported = await store.listImportedQuestions();
     expect(imported).toHaveLength(1);
-    expect(imported[0]?.question_version_id).toBe("M2-CLEANUP-SELECTED-0001");
+    expect(imported[0]?.question_version_id).toBe(selected1VersionId);
     expect(imported[0]?.publication_status).toBe("STAGED");
     expect(imported[0]?.active).toBe(true);
   });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createFakeClock } from "@/lib/clock";
 import { createMemoryContentStore } from "@/lib/content-store";
 import { validateImportQuestion } from "@/lib/content-validate";
-import { selected1 } from "@/lib/fixtures/selected-1";
+import { selected1, selected1VersionId } from "@/lib/fixtures/selected-1";
 import {
   isLearnerEligible,
   planVersionWrite,
@@ -63,7 +63,7 @@ describe("Phase 3 staged import", () => {
     expect(result.batch.failed_count).toBe(0);
     expect(result.lines[0]?.outcome).toBe("PASSED");
 
-    const version = store.versions.get("M2-CLEANUP-SELECTED-0001");
+    const version = store.versions.get(selected1VersionId);
     expect(version?.publication_status).toBe("STAGED");
     expect(version).toBeDefined();
     if (!version) {
@@ -95,7 +95,7 @@ describe("Phase 3 staged import", () => {
     const result = await stageImport(store, { records: [edited] });
 
     expect(result.lines[0]?.outcome).toBe("PASSED");
-    const version = store.versions.get("M2-CLEANUP-SELECTED-0001");
+    const version = store.versions.get(selected1VersionId);
     expect(version?.stem).toContain("Clarified.");
     expect(version?.publication_status).toBe("STAGED");
     expect(store.versions.size).toBe(1);
@@ -104,7 +104,7 @@ describe("Phase 3 staged import", () => {
   it("does not overwrite a published version with different content", async () => {
     const store = createMemoryContentStore();
     await stageImport(store, { records: [selected1] });
-    const published = store.versions.get("M2-CLEANUP-SELECTED-0001");
+    const published = store.versions.get(selected1VersionId);
     if (!published) {
       throw new Error("expected staged version");
     }
@@ -120,18 +120,18 @@ describe("Phase 3 staged import", () => {
     const result = await stageImport(store, { records: [edited] });
     expect(result.lines[0]?.outcome).toBe("FAILED");
     expect(result.lines[0]?.errors[0]).toMatch(/frozen/i);
-    expect(store.versions.get("M2-CLEANUP-SELECTED-0001")?.stem).toBe(
+    expect(store.versions.get(selected1VersionId)?.stem).toBe(
       selected1.stem,
     );
     expect(
-      store.versions.get("M2-CLEANUP-SELECTED-0001")?.publication_status,
+      store.versions.get(selected1VersionId)?.publication_status,
     ).toBe("PUBLISHED");
   });
 
   it("does not overwrite a version that has an attempt", async () => {
     const store = createMemoryContentStore();
     await stageImport(store, { records: [selected1] });
-    store.markAttempted("M2-CLEANUP-SELECTED-0001");
+    store.markAttempted(selected1VersionId);
 
     const edited: ImportQuestionInput = {
       ...selected1,
@@ -139,7 +139,7 @@ describe("Phase 3 staged import", () => {
     };
     const result = await stageImport(store, { records: [edited] });
     expect(result.lines[0]?.outcome).toBe("FAILED");
-    expect(store.versions.get("M2-CLEANUP-SELECTED-0001")?.stem).toBe(
+    expect(store.versions.get(selected1VersionId)?.stem).toBe(
       selected1.stem,
     );
   });

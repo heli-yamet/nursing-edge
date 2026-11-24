@@ -1,8 +1,11 @@
 import type { ImportQuestionInput } from "@/lib/content-validate";
 
+/** Store and import keys use the full workbook `question_version` string. */
+export const selected1VersionId = "M2-CLEANUP-SELECTED-0001-EDU3-TU33-P2R1";
+
 export const selected1: ImportQuestionInput = {
   selected_number: 1,
-  question_version: "M2-CLEANUP-SELECTED-0001",
+  question_version: selected1VersionId,
   permanent_item_id: "W4-B015-P01-I017",
   original_source_q: "3",
   workbook_row: "5",

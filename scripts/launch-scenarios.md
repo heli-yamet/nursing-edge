@@ -33,7 +33,7 @@ Launch-critical suites (access, Practice/Review session, commit, restore manifes
 
 **Code:** `REPAIR_DELAY_MS` = 24h, `CONFIRMATION_DELAY_MS` = 72h (`review-rules.ts`); Review active window = 14 days and expiry-near = 24h (`clock.ts`). `invariants.test.ts` scenarios **6** and **7** pass on these values.
 
-**Test run (23 Nov):** `npm test` in `nursing-edge` — **417 tests**, **412 passed**, **5 failed** (workbook `ENOENT` only; same as 20 Nov local skips). Delay-related failures cleared.
+**Test run (23 Nov):** `npm test` in `nursing-edge` — **417 tests**, **417 passed**. Workbook integration tests read `../Workbooks_10_24` via `src/lib/fixtures/workbook-paths.ts`; disk cases use `describe.skipIf` / `it.skipIf` when files are absent. Delay-related failures cleared.
 
 **Document 05 / staging walkthrough:** No staging access this session. Scenario threads **1–8** remain **Passed** on the **20 Nov** automated evidence above plus **23 Nov** delay reset verification (`invariants.test.ts`, `review-outlook.test.ts`, `commit-answer.test.ts`, `review-session.test.ts`). Not manually exercised on deployed staging: live Practice→Review commit with real 24h/72h clocks, admin import upload, **390px** spot-check.
 
@@ -47,13 +47,14 @@ None required. Scenario pass is code-and-test traced only; no product behavior c
 
 1. ~~Reset Review test delays to **24h Repair** and **72h Confirmation**~~ — **done 23 Nov** (`review-rules.ts`, `clock.ts`).
 2. End-to-end walkthrough on one release commit (document 05 scenarios) when staging is available.
-3. Package: eligibility report, test report, Shopify proof, mobile and accessibility notes (`scripts/accessibility-*.md`), security checklist, restore proof, sample export, known limits.
+3. ~~Package: eligibility report, test report, Shopify proof, mobile and accessibility notes, security checklist, restore proof, sample export, known limits~~ — **done 24 Nov** in [developer-complete-handoff/](./developer-complete-handoff/README.md).
 4. Optional manual **390px** spot-check on staging (Practice submit, Review commit, admin import upload) — noted in [accessibility-contrast-mobile.md](./accessibility-contrast-mobile.md).
 
 ## Related runbooks
 
+- [developer-complete-handoff/README.md](./developer-complete-handoff/README.md) — Tue 24 handoff index (eligibility, tests, Shopify, a11y, security, restore, export sample, limits)
 - [security-checkpoint.md](./security-checkpoint.md) — Gates 26–27 (closed 13 Nov)
 - [mongodb-backup.md](./mongodb-backup.md) / [mongodb-restore.md](./mongodb-restore.md) — Admin Blob backup and restore
 - [accessibility-keyboard-focus.md](./accessibility-keyboard-focus.md), [accessibility-screen-reader.md](./accessibility-screen-reader.md), [accessibility-contrast-mobile.md](./accessibility-contrast-mobile.md)
 
-**Gate status (23 Nov):** Launch scenario threads **passed** on automated evidence; production Review delays active in code. **Developer Complete:** Wed 25 Nov (handoff package Tue 24).
+**Gate status (24 Nov):** Launch scenario threads **passed** on automated evidence; production Review delays active in code; **handoff package** assembled Tue 24. **Developer Complete:** Wed 25 Nov (final test run + client message + changelog).

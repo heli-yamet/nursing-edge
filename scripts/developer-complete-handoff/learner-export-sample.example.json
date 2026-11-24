@@ -1,0 +1,44 @@
+{
+  "_comment": "Redacted example of Super Admin learner export (buildLearnerEvidenceExport). No answer keys, stems, option ids, names, or emails. Real exports are downloaded from Admin → Learning evidence.",
+  "learner_id": "NE-LEARNER-REDACTED",
+  "exported_at": "2026-11-24T15:30:00.000Z",
+  "attempts": [
+    {
+      "attempt_id": "attempt-redacted-001",
+      "question_id": "NE-Q-000123",
+      "question_version_id": "NE-Q-000123-R7-TU33",
+      "session_id": "session-redacted-001",
+      "correct": true,
+      "confidence": "SURE",
+      "six_state": "CORRECT_SURE",
+      "committed_at": "2026-11-06T10:00:00.000Z"
+    }
+  ],
+  "review_cycles": [
+    {
+      "cycle_id": "cycle-redacted-001",
+      "question_id": "NE-Q-000123",
+      "stage": "CONFIRMATION",
+      "state": "SCHEDULED",
+      "due_at": "2026-11-09T10:00:00.000Z",
+      "active_window_expires_at": "2026-11-20T10:00:00.000Z",
+      "triggering_attempt_id": "attempt-redacted-001",
+      "triggering_six_state": "CORRECT_SURE",
+      "closure_reason": null,
+      "rule_set_version": "v5.3-r3"
+    }
+  ],
+  "interview_deliveries": [
+    {
+      "delivery_id": "delivery-redacted-001",
+      "session_id": "session-redacted-review-001",
+      "question_id": "NE-Q-000123",
+      "question_version_id": "NE-Q-000123-R7-TU33",
+      "teaching_id": "NE-TEACHING-REDACTED",
+      "teaching_revision": 1,
+      "kind": "PROMPT",
+      "prompt_number": 1,
+      "delivered_at": "2026-11-10T14:05:00.000Z"
+    }
+  ]
+}

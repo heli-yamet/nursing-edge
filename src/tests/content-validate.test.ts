@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateImportQuestion } from "@/lib/content-validate";
-import { selected1 } from "@/lib/fixtures/selected-1";
+import { selected1, selected1VersionId } from "@/lib/fixtures/selected-1";
 import { mapSourceSystem } from "@/lib/learner-topics";
 import { isLearnerEligible } from "@/lib/stage-import";
 
@@ -12,9 +12,7 @@ describe("Phase 2 content validator", () => {
       return;
     }
     expect(result.question.question_id).toBe("W4-B015-P01-I017");
-    expect(result.version.question_version_id).toBe(
-      "M2-CLEANUP-SELECTED-0001",
-    );
+    expect(result.version.question_version_id).toBe(selected1VersionId);
     expect(result.question.topic_id).toBe("cardiovascular-perfusion");
     expect(result.question.source_system).toBe("CARDIO_PERFUSION");
     expect(result.question.source_topic).toContain("acute-aortic-dissection");
