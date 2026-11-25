@@ -53,6 +53,7 @@ function applyAdminCors(req: Request, response: Response): void {
   if (origin && adminOriginAllowed(origin)) {
     response.headers.set("Access-Control-Allow-Origin", origin);
     response.headers.set("Access-Control-Allow-Credentials", "true");
+    console.log("Allowed");
   }
 
   response.headers.set(
