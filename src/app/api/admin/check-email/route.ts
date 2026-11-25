@@ -6,12 +6,10 @@ import {
 } from "@/lib/admin-auth";
 
 export function OPTIONS(req: Request) {
-  console.log("OPTIONS", req.headers);
   return emptyAdminCors(req);
 }
 
 export async function POST(req: Request) {
-  console.log("POST", req.headers);
   try {
     const body = (await req.json()) as { email?: string; method?: string };
     const email = body.email ?? "";

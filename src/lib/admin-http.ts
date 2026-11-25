@@ -49,11 +49,9 @@ export function fileWithAdminCors(
 
 function applyAdminCors(req: Request, response: Response): void {
   const origin = req.headers.get("origin") ?? "";
-  console.log("origin", origin);
   if (origin && adminOriginAllowed(origin)) {
     response.headers.set("Access-Control-Allow-Origin", origin);
     response.headers.set("Access-Control-Allow-Credentials", "true");
-    console.log("Allowed");
   }
 
   response.headers.set(
