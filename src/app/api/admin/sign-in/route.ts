@@ -10,10 +10,12 @@ import {
 import { createAdminToken } from "@/lib/admin-session";
 
 export function OPTIONS(req: Request) {
+  console.log("OPTIONS", req.headers.get("origin"));
   return emptyAdminCors(req);
 }
 
 export async function POST(req: Request) {
+  console.log("POST", req.headers.get("origin"));
   try {
     const body = (await req.json()) as {
       email?: string;
