@@ -6,7 +6,7 @@ Developer Complete walkthrough uses one aligned triple of commits across the thr
 | --- | --- | --- | --- |
 | Learner | `nursing-edge` | 24h Repair, 72h Confirmation, 14-day active window | `e1d0444` |
 | Admin | `nursing-edge-admin` | No Monday code change expected | `6e5eac7` (pre-walkthrough baseline) |
-| Status | `nursing-edge-status` | Changelog 0.0.34 when shipped | _pending — commit blocked locally (index permissions); file staged in working tree_ |
+| Status | `nursing-edge-status` | Changelog **0.0.35** Developer Complete (25 Nov) | _commit with Wed handoff_ |
 
 ## What to verify on staging (when access is available)
 

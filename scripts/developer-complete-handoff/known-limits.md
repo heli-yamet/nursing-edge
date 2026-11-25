@@ -1,6 +1,6 @@
 # Known limits at Developer Complete handoff
 
-**Date:** Tue **24 Nov 2026** (package for Wed **25 Nov** gate).
+**Date:** **Wed 25 Nov 2026** (Developer Complete gate closed).
 
 ## Content and Review routing
 
@@ -24,7 +24,7 @@
 
 10. **Shopify live proof** — Client confirmed production webhooks **13 Nov**; no new revoke/restore transcript in this package ([shopify-proof.md](./shopify-proof.md)).
 11. **Restore** — Last automated **passed** drill **12 Nov**; production restores are operator-driven via Blob ([restore-proof.md](./restore-proof.md)).
-12. **Status repo commit** — [release-walkthrough-2026-11-23.md](../release-walkthrough-2026-11-23.md) notes learner SHA `e1d0444`; status changelog **0.0.34** may still be pending push if index permissions blocked commit.
+12. **Status changelog** — **0.0.35** (25 Nov Developer Complete) in `nursing-edge-status/src/lib/changelog.ts`; deploy status with learner release as needed.
 
 ## CI / developer machines
 

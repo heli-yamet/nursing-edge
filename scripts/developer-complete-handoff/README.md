@@ -1,14 +1,15 @@
-# Developer Complete handoff package (Tue 24 Nov 2026)
+# Developer Complete handoff package — closed **Wed 25 Nov 2026**
 
-Open this folder for the **Wednesday 25 Nov** Developer Complete gate. It consolidates eligibility, test, Shopify, accessibility, security, restore, sample export, and known limits. No secrets belong here or in git.
+This folder is the **Developer Complete** gate package. It consolidates eligibility, test, Shopify, accessibility, security, restore, sample export, and known limits. No secrets belong here or in git.
 
-**Milestone:** Developer Complete is **25 Nov**, not public launch. Imported **links** and **teaching** remain unapproved until the client acts in admin after this package lands.
+**Milestone:** Developer Complete **25 Nov 2026** — not public launch. Imported **links** and **teaching** remain unapproved until the client acts in admin.
 
 ## Index
 
 | Artifact | File |
 | --- | --- |
 | Eligibility and launch gate (2,000 MVP) | [eligibility-report.md](./eligibility-report.md) |
+| Unit test report (25 Nov gate run) | [test-report-2026-11-25.md](./test-report-2026-11-25.md) |
 | Unit test report (24 Nov run) | [test-report-2026-11-24.md](./test-report-2026-11-24.md) |
 | Shopify webhook proof | [shopify-proof.md](./shopify-proof.md) |
 | Accessibility (keyboard, screen reader, mobile) | [accessibility.md](./accessibility.md) |
@@ -23,7 +24,8 @@ Open this folder for the **Wednesday 25 Nov** Developer Complete gate. It consol
 - [release-walkthrough-2026-11-23.md](../release-walkthrough-2026-11-23.md) — release commit anchor
 - [security-checkpoint.md](../security-checkpoint.md) — full Gate 26–27 tables (closed 13 Nov)
 - [mongodb-backup.md](../mongodb-backup.md) / [mongodb-restore.md](../mongodb-restore.md) — Admin Blob ops
-- [client-update-draft-2026-11-20.md](../client-update-draft-2026-11-20.md) — draft client message (update Wed)
+- [client-update-developer-complete-2026-11-25.md](../client-update-developer-complete-2026-11-25.md) — **send** Developer Complete client message
+- [client-update-draft-2026-11-20.md](../client-update-draft-2026-11-20.md) — prior week draft (superseded)
 
 ## Client actions after Developer Complete
 
