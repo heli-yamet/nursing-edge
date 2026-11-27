@@ -18,7 +18,7 @@ export async function redirectSignedInLearner(): Promise<void> {
   const token = await readLearnerSessionToken();
   const learner = await learnerFromToken(token);
   if (learner) {
-    redirect("/home");
+    redirect(learnerEntryPath(learner));
   }
 }
 

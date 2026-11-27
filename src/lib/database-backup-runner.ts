@@ -124,7 +124,7 @@ async function advanceBackupJob(job: DatabaseBackupJob): Promise<DatabaseBackupJ
 
     const { ndjson, document_count } = await exportCollection(db, collection);
     await put(backupCollectionDataPath(job.backup_name, collection), ndjson, {
-      access: "private",
+      access: "public",
       allowOverwrite: true,
       contentType: "application/x-ndjson",
     });
@@ -163,12 +163,12 @@ async function advanceBackupJob(job: DatabaseBackupJob): Promise<DatabaseBackupJ
     };
 
     await put(backupMetaPath(job.backup_name), JSON.stringify(meta, null, 2), {
-      access: "private",
+      access: "public",
       allowOverwrite: true,
       contentType: "application/json",
     });
     await put(backupReportPath(job.backup_name), JSON.stringify(report, null, 2), {
-      access: "private",
+      access: "public",
       allowOverwrite: true,
       contentType: "application/json",
     });
@@ -195,7 +195,7 @@ type BackupReport = {
 
 async function loadBackupReport(backupName: string): Promise<BackupReport> {
   const downloaded = await get(backupReportPath(backupName), {
-    access: "private",
+    access: "public",
     useCache: false,
   });
   if (!downloaded || downloaded.statusCode !== 200) {
@@ -219,7 +219,7 @@ async function validateBackupBlobs(
 ): Promise<void> {
   for (const row of report.collection_stats) {
     const path = backupCollectionDataPath(backupName, row.collection);
-    const downloaded = await get(path, { access: "private", useCache: false });
+    const downloaded = await get(path, { access: "public", useCache: false });
     if (!downloaded || downloaded.statusCode !== 200) {
       throw new Error(`Backup file missing for collection ${row.collection}.`);
     }
@@ -286,7 +286,7 @@ async function advanceRestoreJob(job: DatabaseBackupJob): Promise<DatabaseBackup
     });
 
     const downloaded = await get(backupCollectionDataPath(job.backup_name, collection), {
-      access: "private",
+      access: "public",
       useCache: false,
     });
     if (!downloaded || downloaded.statusCode !== 200) {
