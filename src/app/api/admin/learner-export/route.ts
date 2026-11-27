@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     if (!isOperatorRole(auth.admin.role)) {
       return jsonWithAdminCors(
         req,
-        { ok: false, reason: "Learner export is limited to the operator account." },
+        { ok: false, reason: "Learner export is not available for this account." },
         403,
       );
     }

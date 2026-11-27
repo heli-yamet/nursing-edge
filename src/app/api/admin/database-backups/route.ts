@@ -1,5 +1,5 @@
 import { emptyAdminCors, jsonWithAdminCors } from "@/lib/admin-http";
-import { requireSuperAdmin } from "@/lib/admin-request";
+import { requireActiveAdmin } from "@/lib/admin-request";
 import { defaultBackupNameForEnv, listStoredBackups } from "@/lib/database-backup-runner";
 import { getRunningDatabaseBackupJob } from "@/lib/database-backup-job";
 
@@ -12,7 +12,7 @@ export function OPTIONS(req: Request) {
 
 export async function GET(req: Request) {
   try {
-    const auth = await requireSuperAdmin(req);
+    const auth = await requireActiveAdmin(req);
     if (!auth.ok) {
       return auth.response;
     }

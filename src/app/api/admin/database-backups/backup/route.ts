@@ -1,5 +1,5 @@
 import { emptyAdminCors, jsonWithAdminCors } from "@/lib/admin-http";
-import { requireSuperAdmin } from "@/lib/admin-request";
+import { requireActiveAdmin } from "@/lib/admin-request";
 import { startBackupJob } from "@/lib/database-backup-runner";
 
 export const runtime = "nodejs";
@@ -11,7 +11,7 @@ export function OPTIONS(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const auth = await requireSuperAdmin(req);
+    const auth = await requireActiveAdmin(req);
     if (!auth.ok) {
       return auth.response;
     }

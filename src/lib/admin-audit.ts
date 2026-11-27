@@ -131,7 +131,7 @@ export type LearnerEvidenceExport = {
 const NOT_RECORDED = "Not recorded";
 
 export function isOperatorRole(role: string): boolean {
-  return role === "SUPER_ADMIN";
+  return role === "SUPER_ADMIN" || role === "ADMIN";
 }
 
 export function importBatchOutcome(
