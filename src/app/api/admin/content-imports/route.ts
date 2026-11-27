@@ -115,7 +115,7 @@ export async function POST(req: Request) {
     }
     blobUrl = url;
 
-    const downloaded = await get(url, { access: "private", useCache: false });
+    const downloaded = await get(url, { access: "public", useCache: false });
     if (!downloaded || downloaded.statusCode !== 200) {
       return jsonWithAdminCors(
         req,

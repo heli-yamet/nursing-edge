@@ -55,7 +55,7 @@ export async function listStoredBackups(): Promise<StoredBackupSummary[]> {
       continue;
     }
     try {
-      const downloaded = await get(pathname, { access: "private", useCache: false });
+      const downloaded = await get(pathname, { access: "public", useCache: false });
       if (!downloaded || downloaded.statusCode !== 200) {
         continue;
       }
